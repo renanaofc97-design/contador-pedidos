@@ -11,7 +11,6 @@ const PORT = process.env.PORT || 10000;
 const DATA_FILE = path.join(__dirname, "data.json");
 
 const API_KEY = process.env.CARDAPIO_API_KEY;
-
 const MERCHANT_ID = "51038";
 
 let orders = {};
@@ -29,7 +28,10 @@ function loadData() {
       }
     }
   } catch (error) {
-    console.error("Erro ao carregar data.json:", error.message);
+    console.error(
+      "Erro ao carregar data.json:",
+      error.message
+    );
   }
 }
 
@@ -40,7 +42,10 @@ function saveData() {
       JSON.stringify({ orders }, null, 2)
     );
   } catch (error) {
-    console.error("Erro ao salvar data.json:", error.message);
+    console.error(
+      "Erro ao salvar data.json:",
+      error.message
+    );
   }
 }
 
@@ -48,8 +53,12 @@ function getTodayString() {
   const now = new Date();
 
   const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
+  const month = String(
+    now.getMonth() + 1
+  ).padStart(2, "0");
+  const day = String(
+    now.getDate()
+  ).padStart(2, "0");
 
   return `${year}-${month}-${day}`;
 }
@@ -64,10 +73,17 @@ function isToday(dateString) {
   }
 
   const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(
+    date.getMonth() + 1
+  ).padStart(2, "0");
+  const day = String(
+    date.getDate()
+  ).padStart(2, "0");
 
-  return `${year}-${month}-${day}` === getTodayString();
+  return (
+    `${year}-${month}-${day}` ===
+    getTodayString()
+  );
 }
 
 function saveOrder(pedido) {
@@ -82,7 +98,8 @@ function saveOrder(pedido) {
     return null;
   }
 
-  const existente = orders[id] || {};
+  const existente =
+    orders[id] || {};
 
   orders[id] = {
     ...existente,
@@ -124,21 +141,37 @@ function saveOrder(pedido) {
   return orders[id];
 }
 
-function registerReady(order, eventCreatedAt) {
+function registerReady(
+  order,
+  eventCreatedAt
+) {
   if (!order) return;
 
-  if (order.ready_at) return;
+  if (order.ready_at) {
+    return;
+  }
+
+  if (!order.created_at) {
+    console.log(
+      "Pedido sem created_at:",
+      order.id
+    );
+    return;
+  }
 
   const readyAt =
     eventCreatedAt ||
     new Date().toISOString();
 
-  if (!order.created_at) {
-    return;
-  }
+  const inicio =
+    new Date(
+      order.created_at
+    ).getTime();
 
-  const inicio = new Date(order.created_at).getTime();
-  const fim = new Date(readyAt).getTime();
+  const fim =
+    new Date(
+      readyAt
+    ).getTime();
 
   if (
     !Number.isFinite(inicio) ||
@@ -155,7 +188,10 @@ function registerReady(order, eventCreatedAt) {
   const minutos =
     (fim - inicio) / 60000;
 
-  if (minutos < 0 || minutos > 180) {
+  if (
+    minutos < 0 ||
+    minutos > 180
+  ) {
     console.log(
       "Tempo de preparo ignorado:",
       order.id,
@@ -169,7 +205,9 @@ function registerReady(order, eventCreatedAt) {
   order.ready_at = readyAt;
 
   order.prep_time_minutes =
-    Number(minutos.toFixed(2));
+    Number(
+      minutos.toFixed(2)
+    );
 
   console.log(
     "TEMPO DE PREPARO REGISTRADO:",
@@ -180,16 +218,22 @@ function registerReady(order, eventCreatedAt) {
   );
 }
 
-function registerReleased(order, eventCreatedAt) {
+function registerReleased(
+  order,
+  eventCreatedAt
+) {
   if (!order) return;
 
-  if (order.released_at) return;
+  if (order.released_at) {
+    return;
+  }
 
   const releasedAt =
     eventCreatedAt ||
     new Date().toISOString();
 
-  order.released_at = releasedAt;
+  order.released_at =
+    releasedAt;
 
   console.log(
     "SAÍDA PARA ENTREGA REGISTRADA:",
@@ -199,7 +243,10 @@ function registerReleased(order, eventCreatedAt) {
   );
 }
 
-function registerDelivered(order, eventCreatedAt) {
+function registerDelivered(
+  order,
+  eventCreatedAt
+) {
   if (!order) return;
 
   if (!order.released_at) {
@@ -217,17 +264,23 @@ function registerDelivered(order, eventCreatedAt) {
     return;
   }
 
-  if (order.delivered_at) return;
+  if (order.delivered_at) {
+    return;
+  }
 
   const deliveredAt =
     eventCreatedAt ||
     new Date().toISOString();
 
   const inicio =
-    new Date(order.released_at).getTime();
+    new Date(
+      order.released_at
+    ).getTime();
 
   const fim =
-    new Date(deliveredAt).getTime();
+    new Date(
+      deliveredAt
+    ).getTime();
 
   if (
     !Number.isFinite(inicio) ||
@@ -244,7 +297,10 @@ function registerDelivered(order, eventCreatedAt) {
   const minutos =
     (fim - inicio) / 60000;
 
-  if (minutos < 0 || minutos > 240) {
+  if (
+    minutos < 0 ||
+    minutos > 240
+  ) {
     console.log(
       "Tempo de entrega ignorado:",
       order.id,
@@ -255,10 +311,13 @@ function registerDelivered(order, eventCreatedAt) {
     return;
   }
 
-  order.delivered_at = deliveredAt;
+  order.delivered_at =
+    deliveredAt;
 
   order.delivery_time_minutes =
-    Number(minutos.toFixed(2));
+    Number(
+      minutos.toFixed(2)
+    );
 
   console.log(
     "TEMPO DE ENTREGA REGISTRADO:",
@@ -269,17 +328,30 @@ function registerDelivered(order, eventCreatedAt) {
   );
 }
 
+/*
+  MÉDIA DE PREPARO DO DIA
+
+  IMPORTANTE:
+  Aqui NÃO usamos apenas pedidos ativos.
+
+  Todos os pedidos de hoje que já possuem
+  prep_time_minutes entram na média.
+
+  Portanto, mesmo que a cozinha fique sem
+  pedidos, o valor continua aparecendo.
+*/
 function getAveragePrepTime() {
   const tempos = [];
 
   for (const id in orders) {
-    const order = orders[id];
+    const order =
+      orders[id];
 
-    if (
-      !order ||
-      !order.created_at ||
-      !order.ready_at
-    ) {
+    if (!order) {
+      continue;
+    }
+
+    if (!order.created_at) {
       continue;
     }
 
@@ -288,7 +360,9 @@ function getAveragePrepTime() {
     }
 
     const tempo =
-      Number(order.prep_time_minutes);
+      Number(
+        order.prep_time_minutes
+      );
 
     if (
       Number.isFinite(tempo) &&
@@ -299,15 +373,16 @@ function getAveragePrepTime() {
     }
   }
 
-  if (!tempos.length) {
+  if (tempos.length === 0) {
     return 0;
   }
 
-  const soma = tempos.reduce(
-    (total, tempo) =>
-      total + tempo,
-    0
-  );
+  const soma =
+    tempos.reduce(
+      (total, tempo) =>
+        total + tempo,
+      0
+    );
 
   const media =
     soma / tempos.length;
@@ -317,18 +392,24 @@ function getAveragePrepTime() {
   );
 }
 
+/*
+  MÉDIA DE ENTREGA DO DIA
+
+  Também continua acumulada mesmo quando
+  não existem pedidos ativos.
+*/
 function getAverageDeliveryTime() {
   const tempos = [];
 
   for (const id in orders) {
-    const order = orders[id];
+    const order =
+      orders[id];
 
-    if (
-      !order ||
-      !order.created_at ||
-      !order.released_at ||
-      !order.delivered_at
-    ) {
+    if (!order) {
+      continue;
+    }
+
+    if (!order.created_at) {
       continue;
     }
 
@@ -337,7 +418,9 @@ function getAverageDeliveryTime() {
     }
 
     const tempo =
-      Number(order.delivery_time_minutes);
+      Number(
+        order.delivery_time_minutes
+      );
 
     if (
       Number.isFinite(tempo) &&
@@ -348,15 +431,16 @@ function getAverageDeliveryTime() {
     }
   }
 
-  if (!tempos.length) {
+  if (tempos.length === 0) {
     return 0;
   }
 
-  const soma = tempos.reduce(
-    (total, tempo) =>
-      total + tempo,
-    0
-  );
+  const soma =
+    tempos.reduce(
+      (total, tempo) =>
+        total + tempo,
+      0
+    );
 
   const media =
     soma / tempos.length;
@@ -379,15 +463,19 @@ function getCounters() {
   };
 
   for (const id in orders) {
-    const order = orders[id];
+    const order =
+      orders[id];
 
-    if (!order) continue;
+    if (!order) {
+      continue;
+    }
 
     if (!isToday(order.created_at)) {
       continue;
     }
 
-    const status = order.status;
+    const status =
+      order.status;
 
     if (
       Object.prototype.hasOwnProperty.call(
@@ -406,11 +494,18 @@ function getTotalToday() {
   let total = 0;
 
   for (const id in orders) {
-    const order = orders[id];
+    const order =
+      orders[id];
 
-    if (!order) continue;
+    if (!order) {
+      continue;
+    }
 
-    if (isToday(order.created_at)) {
+    if (
+      isToday(
+        order.created_at
+      )
+    ) {
       total++;
     }
   }
@@ -422,15 +517,19 @@ function getActiveOrders() {
   const ativos = [];
 
   for (const id in orders) {
-    const order = orders[id];
+    const order =
+      orders[id];
 
-    if (!order) continue;
+    if (!order) {
+      continue;
+    }
 
     if (!isToday(order.created_at)) {
       continue;
     }
 
-    const status = order.status;
+    const status =
+      order.status;
 
     if (
       status === "canceled" ||
@@ -443,24 +542,32 @@ function getActiveOrders() {
     ativos.push(order);
   }
 
-  ativos.sort((a, b) => {
-    const dateA =
-      new Date(a.created_at).getTime();
+  ativos.sort(
+    (a, b) => {
+      const dateA =
+        new Date(
+          a.created_at
+        ).getTime();
 
-    const dateB =
-      new Date(b.created_at).getTime();
+      const dateB =
+        new Date(
+          b.created_at
+        ).getTime();
 
-    return dateA - dateB;
-  });
+      return dateA - dateB;
+    }
+  );
 
   return ativos;
 }
 
 function dashboardData() {
   return {
-    total_today: getTotalToday(),
+    total_today:
+      getTotalToday(),
 
-    counters: getCounters(),
+    counters:
+      getCounters(),
 
     avg_prep_time:
       getAveragePrepTime(),
@@ -479,15 +586,17 @@ function broadcast() {
       dashboardData()
     );
 
-  clients.forEach((client) => {
-    try {
-      client.write(
-        `data: ${data}\n\n`
-      );
-    } catch (error) {
-      // cliente desconectado
+  clients.forEach(
+    (client) => {
+      try {
+        client.write(
+          `data: ${data}\n\n`
+        );
+      } catch (error) {
+        // cliente desconectado
+      }
     }
-  });
+  );
 }
 
 function extractOrders(data) {
@@ -499,22 +608,36 @@ function extractOrders(data) {
     return data;
   }
 
-  if (Array.isArray(data.orders)) {
+  if (
+    Array.isArray(
+      data.orders
+    )
+  ) {
     return data.orders;
   }
 
-  if (Array.isArray(data.data)) {
+  if (
+    Array.isArray(
+      data.data
+    )
+  ) {
     return data.data;
   }
 
   if (
     data.data &&
-    Array.isArray(data.data.orders)
+    Array.isArray(
+      data.data.orders
+    )
   ) {
     return data.data.orders;
   }
 
-  if (Array.isArray(data.results)) {
+  if (
+    Array.isArray(
+      data.results
+    )
+  ) {
     return data.results;
   }
 
@@ -549,13 +672,18 @@ async function requestOrders(
   }
 
   const response =
-    await fetch(url, {
-      method: "GET",
-      headers: {
-        "X-API-KEY": API_KEY,
-        "Accept": "application/json"
+    await fetch(
+      url,
+      {
+        method: "GET",
+
+        headers: {
+          "X-API-KEY": API_KEY,
+          "Accept":
+            "application/json"
+        }
       }
-    });
+    );
 
   const text =
     await response.text();
@@ -583,14 +711,19 @@ async function syncOrders() {
 
     const updatedSince =
       new Date(
-        Date.now() - 8 * 60 * 60 * 1000
+        Date.now() -
+        8 * 60 * 60 * 1000
       ).toISOString();
 
     let totalRecebidos = 0;
     let novos = 0;
     let atualizados = 0;
 
-    for (let page = 1; page <= 10; page++) {
+    for (
+      let page = 1;
+      page <= 10;
+      page++
+    ) {
       let data;
 
       try {
@@ -617,25 +750,36 @@ async function syncOrders() {
         `Página ${page}: ${pedidos.length} pedidos`
       );
 
-      if (!pedidos.length) {
+      if (
+        pedidos.length === 0
+      ) {
         break;
       }
 
-      totalRecebidos += pedidos.length;
+      totalRecebidos +=
+        pedidos.length;
 
-      for (const pedido of pedidos) {
+      for (
+        const pedido of pedidos
+      ) {
         const id =
           pedido.id ||
           pedido.order_id ||
           pedido.code;
 
-        if (!id) continue;
+        if (!id) {
+          continue;
+        }
 
         const existia =
-          Boolean(orders[id]);
+          Boolean(
+            orders[id]
+          );
 
         const order =
-          saveOrder(pedido);
+          saveOrder(
+            pedido
+          );
 
         if (existia) {
           atualizados++;
@@ -653,7 +797,8 @@ async function syncOrders() {
 
         if (
           status === "ready" ||
-          status === "waiting_to_catch"
+          status ===
+            "waiting_to_catch"
         ) {
           registerReady(
             order,
@@ -663,7 +808,8 @@ async function syncOrders() {
 
         if (
           status === "released" ||
-          status === "out_for_delivery"
+          status ===
+            "out_for_delivery"
         ) {
           registerReleased(
             order,
@@ -689,6 +835,10 @@ async function syncOrders() {
       }
     }
 
+    /*
+      SALVA TODOS OS PEDIDOS E OS TEMPOS
+      ANTES DE ATUALIZAR O PAINEL.
+    */
     saveData();
 
     console.log(
@@ -746,8 +896,12 @@ app.post(
       );
 
       if (
-        String(event.merchant_id) !==
-        String(MERCHANT_ID)
+        String(
+          event.merchant_id
+        ) !==
+        String(
+          MERCHANT_ID
+        )
       ) {
         console.log(
           "Webhook ignorado: merchant_id diferente"
@@ -783,18 +937,25 @@ app.post(
         orders[orderId];
 
       if (!order) {
-        order = saveOrder({
-          id: orderId,
-          status: status,
-          created_at: eventTime
-        });
+        order =
+          saveOrder({
+            id: orderId,
+
+            status:
+              status,
+
+            created_at:
+              eventTime
+          });
       } else {
-        order.status = status;
+        order.status =
+          status;
       }
 
       if (
         status === "ready" ||
-        status === "waiting_to_catch"
+        status ===
+          "waiting_to_catch"
       ) {
         registerReady(
           order,
@@ -804,7 +965,8 @@ app.post(
 
       if (
         status === "released" ||
-        status === "out_for_delivery"
+        status ===
+          "out_for_delivery"
       ) {
         registerReleased(
           order,
@@ -822,7 +984,31 @@ app.post(
         );
       }
 
+      /*
+        SALVA IMEDIATAMENTE.
+
+        Assim, mesmo que depois não tenha
+        nenhum pedido ativo, os tempos
+        continuam armazenados.
+      */
       saveData();
+
+      console.log(
+        "TOTAL DE PEDIDOS HOJE:",
+        getTotalToday()
+      );
+
+      console.log(
+        "TEMPO MÉDIO DE PREPARO:",
+        getAveragePrepTime(),
+        "min"
+      );
+
+      console.log(
+        "TEMPO MÉDIO DE ENTREGA:",
+        getAverageDeliveryTime(),
+        "min"
+      );
 
       broadcast();
 
@@ -913,7 +1099,9 @@ app.get(
         getAverageDeliveryTime(),
 
       orders:
-        Object.keys(orders).length,
+        Object.keys(
+          orders
+        ).length,
 
       clients:
         clients.length,
@@ -935,17 +1123,25 @@ app.listen(
 
     console.log(
       "Pedidos carregados:",
-      Object.keys(orders).length
+      Object.keys(
+        orders
+      ).length
     );
 
     console.log(
       "Consultando total de pedidos..."
     );
 
+    /*
+      PRIMEIRA SINCRONIZAÇÃO
+    */
     syncOrders();
   }
 );
 
+/*
+  SINCRONIZA A CADA 30 SEGUNDOS
+*/
 setInterval(
   syncOrders,
   30000
