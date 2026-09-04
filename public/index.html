@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pedidos — Dona Feijuca</title>
+<style>
+  *{box-sizing:border-box} body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#111;color:#fff}
+  header{padding:22px 28px;display:flex;justify-content:space-between;align-items:center}
+  h1{margin:0;font-size:30px}.online{font-size:14px;opacity:.75}
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;padding:0 28px 20px}
+  .card{background:#1d1d1d;border-radius:18px;padding:22px;min-height:150px;display:flex;flex-direction:column;justify-content:space-between}
+  .label{font-size:17px;opacity:.8}.num{font-size:64px;font-weight:800;line-height:1}
+  .aguardando{border-left:8px solid #f1c40f}.preparo{border-left:8px solid #f39c12}
+  .prontos{border-left:8px solid #2ecc71}.entrega{border-left:8px solid #3498db}
+  .entregues{border-left:8px solid #9b59b6}.total{border-left:8px solid #ecf0f1}
+  section{padding:0 28px 30px}.panel{background:#1d1d1d;border-radius:18px;padding:22px}
+  table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px;border-bottom:1px solid #333}
+  .pill{display:inline-block;padding:6px 10px;border-radius:999px;background:#333;font-size:13px}
+  @media(max-width:900px){.grid{grid-template-columns:repeat(2,1fr)}} @media(max-width:550px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <h1>🍛 Dona Feijuca — Pedidos</h1>
+  <div class="online" id="conn">Conectando...</div>
+</header>
+
+<div class="grid">
+  <div class="card aguardando"><div class="label">Aguardando</div><div class="num" id="aguardando">0</div></div>
+  <div class="card preparo"><div class="label">Em preparo</div><div class="num" id="em_preparo">0</div></div>
+  <div class="card prontos"><div class="label">Prontos</div><div class="num" id="prontos">0</div></div>
+  <div class="card entrega"><div class="label">Em entrega</div><div class="num" id="em_entrega">0</div></div>
+  <div class="card entregues"><div class="label">Entregues hoje</div><div class="num" id="entregues">0</div></div>
+  <div class="card total"><div class="label">Total de pedidos hoje</div><div class="num" id="total_today">0</div></div>
+</div>
+
+<section>
+<div class="panel">
+<h2>Pedidos ativos</h2>
+<table>
+<thead><tr><th>Pedido</th><th>Status</th><th>Recebido</th></tr></thead>
+<tbody id="orders"><tr><td colspan="3">Aguardando pedidos...</td></tr></tbody>
+</table>
+</div>
+</section>
+
+<script>
+const labels = {
+  aguardando:"Aguardando", em_preparo:"Em preparo", prontos:"Pronto",
+  prontos_retirada:"Pronto / retirada", em_entrega:"Em entrega"
+};
+function age(iso){
+  const m = Math.max(0, Math.floor((Date.now()-new Date(iso).getTime())/60000));
+  return m < 1 ? "agora" : `${m} min`;
+}
+function render(s){
+  for(const k of ["aguardando","em_preparo","prontos","em_entrega","entregues"])
+    document.getElementById(k).textContent = s.counts[k] || 0;
+  document.getElementById("total_today").textContent = s.total_today || 0;
+  const tbody = document.getElementById("orders");
+  if(!s.active_orders.length){
+    tbody.innerHTML = '<tr><td colspan="3">Nenhum pedido ativo.</td></tr>'; return;
+  }
+  tbody.innerHTML = s.active_orders.map(o => `
+    <tr>
+      <td><strong>#${o.display_id}</strong></td>
+      <td><span class="pill">${labels[o.bucket] || o.status}</span></td>
+      <td>${age(o.created_at)}</td>
+    </tr>`).join("");
+}
+async function boot(){
+  try { render(await (await fetch("/api/stats")).json()); } catch(e){}
+  const es = new EventSource("/api/events");
+  es.onopen = () => document.getElementById("conn").textContent = "● Online — atualiza em tempo real";
+  es.onmessage = e => render(JSON.parse(e.data));
+  es.onerror = () => document.getElementById("conn").textContent = "○ Reconectando...";
+}
+boot();
+setInterval(()=>document.querySelectorAll("tbody tr").forEach(()=>{}),30000);
+</script>
+</body>
+</html>
