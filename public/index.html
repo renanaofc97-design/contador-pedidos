@@ -84,51 +84,47 @@ body::after{
   z-index:-1;
 }
 
+
 /* =========================================
    HEADER
 ========================================= */
 
 header{
-  padding:24px 42px 15px;
+  padding:18px 42px 10px;
   text-align:center;
 }
 
 .logo{
-  font-size:30px;
-  margin-bottom:3px;
-
-  filter:
-    drop-shadow(
-      0 0 12px rgba(255,255,255,.15)
-    );
+  font-size:22px;
+  margin-bottom:2px;
 }
 
 h1{
   margin:0;
 
-  font-size:32px;
+  font-size:24px;
 
   font-weight:900;
 
-  letter-spacing:-1px;
+  letter-spacing:-.5px;
 }
 
 .main-title{
-  margin-top:5px;
+  margin-top:3px;
 
-  font-size:12px;
+  font-size:9px;
 
   font-weight:900;
 
-  letter-spacing:3px;
+  letter-spacing:2px;
 
-  color:#999;
+  color:#888;
 }
 
 .motto{
-  margin-top:8px;
+  margin-top:5px;
 
-  font-size:12px;
+  font-size:10px;
 
   color:#555;
 
@@ -136,7 +132,7 @@ h1{
 }
 
 .header-bottom{
-  margin-top:14px;
+  margin-top:9px;
 
   display:flex;
 
@@ -144,11 +140,11 @@ h1{
 
   align-items:center;
 
-  gap:14px;
+  gap:10px;
 }
 
 .clock{
-  font-size:17px;
+  font-size:14px;
 
   font-weight:900;
 
@@ -156,7 +152,7 @@ h1{
 }
 
 .online{
-  padding:6px 12px;
+  padding:5px 10px;
 
   border-radius:999px;
 
@@ -166,13 +162,14 @@ h1{
 
   color:#57ff9a;
 
-  font-size:10px;
+  font-size:9px;
 
   font-weight:900;
 
   box-shadow:
     0 0 15px rgba(50,255,130,.08);
 }
+
 
 /* =========================================
    RESUMO
@@ -194,9 +191,9 @@ h1{
 .summary-card{
   position:relative;
 
-  min-height:95px;
+  min-height:105px;
 
-  padding:16px 22px;
+  padding:18px 22px;
 
   border-radius:16px;
 
@@ -247,22 +244,27 @@ h1{
     0 0 20px #65ff00;
 }
 
+
+/* =========================================
+   TEXTOS DOS CARDS
+========================================= */
+
 .summary-title{
-  font-size:11px;
+  font-size:13px;
 
   text-transform:uppercase;
 
-  letter-spacing:2px;
+  letter-spacing:1.5px;
 
-  color:#666;
+  color:#aaa;
 
   font-weight:900;
 }
 
 .summary-number{
-  margin-top:5px;
+  margin-top:6px;
 
-  font-size:50px;
+  font-size:58px;
 
   line-height:1;
 
@@ -272,8 +274,8 @@ h1{
 }
 
 .summary-icon{
-  width:55px;
-  height:55px;
+  width:58px;
+  height:58px;
 
   border-radius:14px;
 
@@ -283,15 +285,16 @@ h1{
 
   justify-content:center;
 
-  font-size:25px;
+  font-size:27px;
 
   background:#111;
 
   border:1px solid #222;
 }
 
+
 /* =========================================
-   TEMPO MÉDIO DE PREPARO
+   TEMPO MÉDIO
 ========================================= */
 
 .prep-time{
@@ -308,11 +311,17 @@ h1{
 }
 
 .prep-time .summary-title{
-  margin-bottom:4px;
+  margin-bottom:5px;
+
+  font-size:13px;
+
+  color:#aaa;
+
+  letter-spacing:1.5px;
 }
 
 .prep-time-number{
-  font-size:48px;
+  font-size:54px;
 
   line-height:1;
 
@@ -342,10 +351,6 @@ h1{
 
 .prep-time.ok .prep-time-number{
   color:#65ff00;
-
-  text-shadow:
-    0 0 12px rgba(100,255,0,.45),
-    0 0 30px rgba(100,255,0,.18);
 }
 
 .prep-time.late{
@@ -372,21 +377,14 @@ h1{
   0%,
   100%{
     opacity:1;
-
-    box-shadow:
-      0 0 30px rgba(255,40,40,.35),
-      inset 0 0 30px rgba(255,40,40,.08);
   }
 
   50%{
     opacity:.45;
-
-    box-shadow:
-      0 0 55px rgba(255,0,0,.75),
-      inset 0 0 45px rgba(255,0,0,.15);
   }
 
 }
+
 
 /* =========================================
    META DE PEDIDOS
@@ -429,21 +427,21 @@ h1{
 }
 
 .goal-title{
-  font-size:11px;
+  font-size:13px;
 
   text-transform:uppercase;
 
-  letter-spacing:2px;
+  letter-spacing:1.7px;
 
-  color:#666;
+  color:#aaa;
 
   font-weight:900;
 }
 
 .goal-number{
-  margin-top:4px;
+  margin-top:5px;
 
-  font-size:24px;
+  font-size:28px;
 
   font-weight:900;
 
@@ -451,15 +449,15 @@ h1{
 }
 
 .goal-number span{
-  color:#666;
+  color:#777;
 
-  font-size:13px;
+  font-size:15px;
 
   letter-spacing:0;
 }
 
 .goal-percent{
-  font-size:18px;
+  font-size:21px;
 
   font-weight:900;
 
@@ -581,25 +579,23 @@ h1{
 }
 
 .goal-message{
-  margin-top:9px;
+  margin-top:10px;
 
-  font-size:9px;
+  font-size:11px;
 
   text-transform:uppercase;
 
   letter-spacing:1.5px;
 
-  color:#555;
+  color:#777;
 
   font-weight:900;
-
-  transition:
-    color .4s ease;
 }
 
 .goal-card.completed .goal-message{
   color:#65ff00;
 }
+
 
 /* =========================================
    KANBAN
@@ -651,11 +647,11 @@ h1{
 
   gap:9px;
 
-  font-size:12px;
+  font-size:14px;
 
   font-weight:900;
 
-  letter-spacing:1px;
+  letter-spacing:1.2px;
 }
 
 .dot{
@@ -668,11 +664,11 @@ h1{
 }
 
 .column-count{
-  min-width:31px;
+  min-width:35px;
 
-  height:29px;
+  height:32px;
 
-  padding:0 9px;
+  padding:0 10px;
 
   border-radius:8px;
 
@@ -682,7 +678,7 @@ h1{
 
   justify-content:center;
 
-  font-size:12px;
+  font-size:14px;
 
   font-weight:900;
 
@@ -690,6 +686,7 @@ h1{
 
   border:1px solid #222;
 }
+
 
 /* =========================================
    CORES
@@ -735,6 +732,7 @@ h1{
     pulseBlue 1.1s infinite;
 }
 
+
 /* =========================================
    ANIMAÇÕES
 ========================================= */
@@ -760,18 +758,11 @@ h1{
   100%{
     opacity:.4;
     transform:scale(.8);
-
-    box-shadow:
-      0 0 5px #ffd400;
   }
 
   50%{
     opacity:1;
     transform:scale(1.35);
-
-    box-shadow:
-      0 0 12px #ffd400,
-      0 0 25px #ffd400;
   }
 
 }
@@ -782,18 +773,11 @@ h1{
   100%{
     opacity:.4;
     transform:scale(.8);
-
-    box-shadow:
-      0 0 5px #65ff00;
   }
 
   50%{
     opacity:1;
     transform:scale(1.35);
-
-    box-shadow:
-      0 0 12px #65ff00,
-      0 0 28px #65ff00;
   }
 
 }
@@ -804,21 +788,15 @@ h1{
   100%{
     opacity:.4;
     transform:scale(.8);
-
-    box-shadow:
-      0 0 5px #24baff;
   }
 
   50%{
     opacity:1;
     transform:scale(1.35);
-
-    box-shadow:
-      0 0 12px #24baff,
-      0 0 28px #24baff;
   }
 
 }
+
 
 /* =========================================
    CONTADORES GRANDES
@@ -924,18 +902,19 @@ h1{
 
   z-index:2;
 
-  margin-top:13px;
+  margin-top:15px;
 
-  font-size:9px;
+  font-size:12px;
 
   text-transform:uppercase;
 
-  letter-spacing:2px;
+  letter-spacing:1.5px;
 
   font-weight:900;
 
-  opacity:.65;
+  opacity:.8;
 }
+
 
 /* =========================================
    AGUARDANDO
@@ -964,6 +943,7 @@ h1{
     0 0 15px rgba(255,255,255,.2),
     0 8px 30px rgba(0,0,0,.8);
 }
+
 
 /* =========================================
    EM PREPARO
@@ -994,9 +974,6 @@ h1{
     0 8px 30px rgba(0,0,0,.55);
 }
 
-.preparing .counter-label{
-  color:#fff;
-}
 
 /* =========================================
    PRONTO
@@ -1027,6 +1004,7 @@ h1{
     0 8px 30px rgba(0,0,0,.55);
 }
 
+
 /* =========================================
    EM ENTREGA
 ========================================= */
@@ -1055,6 +1033,7 @@ h1{
     0 0 35px rgba(0,170,255,.55),
     0 8px 30px rgba(0,0,0,.55);
 }
+
 
 /* =========================================
    PEDIDOS ATIVOS
@@ -1090,19 +1069,19 @@ section{
 h2{
   margin:0;
 
-  font-size:16px;
+  font-size:19px;
 
   font-weight:900;
 }
 
 .panel-info{
-  font-size:9px;
+  font-size:10px;
 
-  color:#555;
+  color:#777;
 
   text-transform:uppercase;
 
-  letter-spacing:1.5px;
+  letter-spacing:1.3px;
 }
 
 table{
@@ -1112,13 +1091,13 @@ table{
 }
 
 th{
-  font-size:9px;
+  font-size:10px;
 
   text-transform:uppercase;
 
   letter-spacing:1.5px;
 
-  color:#555;
+  color:#777;
 }
 
 th,
@@ -1131,7 +1110,7 @@ td{
 }
 
 td{
-  font-size:12px;
+  font-size:13px;
 }
 
 .pill{
@@ -1150,18 +1129,10 @@ td{
   font-weight:800;
 }
 
+
 /* =========================================
    RESPONSIVO
 ========================================= */
-
-@media(max-width:1250px){
-
-  .summary{
-    grid-template-columns:
-      repeat(3,1fr);
-  }
-
-}
 
 @media(max-width:1100px){
 
@@ -1175,17 +1146,17 @@ td{
 @media(max-width:650px){
 
   header{
-    padding:18px;
+    padding:15px 18px 8px;
   }
 
   h1{
-    font-size:27px;
+    font-size:20px;
   }
 
   .main-title{
-    font-size:10px;
+    font-size:8px;
 
-    letter-spacing:2px;
+    letter-spacing:1.5px;
   }
 
   .summary{
@@ -1211,7 +1182,7 @@ td{
   }
 
   .goal-number{
-    font-size:20px;
+    font-size:22px;
   }
 
   .kanban{
@@ -1238,6 +1209,7 @@ td{
 
 }
 
+
 /* =========================================
    TV / TELA GRANDE
 ========================================= */
@@ -1245,15 +1217,15 @@ td{
 @media(min-width:1400px){
 
   header{
-    padding-top:25px;
+    padding-top:18px;
   }
 
   h1{
-    font-size:38px;
+    font-size:28px;
   }
 
   .main-title{
-    font-size:13px;
+    font-size:10px;
   }
 
   .summary{
@@ -1265,20 +1237,32 @@ td{
   }
 
   .summary-card{
-    min-height:115px;
+    min-height:120px;
+  }
+
+  .summary-title{
+    font-size:14px;
   }
 
   .summary-number{
-    font-size:65px;
+    font-size:68px;
   }
 
   .prep-time-number{
-    font-size:60px;
+    font-size:62px;
   }
 
   .goal-section{
     padding-left:55px;
     padding-right:55px;
+  }
+
+  .goal-title{
+    font-size:14px;
+  }
+
+  .goal-number{
+    font-size:30px;
   }
 
   .kanban{
@@ -1293,12 +1277,20 @@ td{
     padding:17px;
   }
 
+  .column-title{
+    font-size:15px;
+  }
+
   .counter-button{
     height:315px;
   }
 
   .counter-number{
     font-size:120px;
+  }
+
+  .counter-label{
+    font-size:13px;
   }
 
   section{
@@ -1315,9 +1307,12 @@ td{
 
 <body>
 
-<header>
 
-  <div class="logo"></div>
+<!-- =========================================
+     HEADER
+========================================= -->
+
+<header>
 
   <h1>
     Dona Feijuca - PAINEL OPERACIONAL
@@ -1326,8 +1321,6 @@ td{
   <div class="main-title">
     CONTADOR DE PEDIDOS EM TEMPO REAL
   </div>
-
-  <div class="motto"></div>
 
   <div class="header-bottom">
 
@@ -1349,7 +1342,13 @@ td{
 
 </header>
 
+
+<!-- =========================================
+     RESUMO
+========================================= -->
+
 <div class="summary">
+
 
   <div class="summary-card">
 
@@ -1374,6 +1373,7 @@ td{
 
   </div>
 
+
   <div
     class="summary-card prep-time ok"
     id="prep_time_card"
@@ -1391,6 +1391,7 @@ td{
     </div>
 
   </div>
+
 
   <div class="summary-card">
 
@@ -1415,7 +1416,9 @@ td{
 
   </div>
 
+
 </div>
+
 
 <!-- =========================================
      META DE PEDIDOS
@@ -1459,6 +1462,7 @@ td{
 
     </div>
 
+
     <div class="goal-bar">
 
       <div
@@ -1467,6 +1471,7 @@ td{
       ></div>
 
     </div>
+
 
     <div
       class="goal-message"
@@ -1479,7 +1484,15 @@ td{
 
 </div>
 
+
+<!-- =========================================
+     KANBAN
+========================================= -->
+
 <div class="kanban">
+
+
+  <!-- AGUARDANDO -->
 
   <div class="column waiting">
 
@@ -1519,6 +1532,9 @@ td{
 
   </div>
 
+
+  <!-- EM PREPARO -->
+
   <div class="column preparing">
 
     <div class="column-head">
@@ -1556,6 +1572,9 @@ td{
     </div>
 
   </div>
+
+
+  <!-- PRONTOS -->
 
   <div class="column ready">
 
@@ -1595,6 +1614,9 @@ td{
 
   </div>
 
+
+  <!-- EM ENTREGA -->
+
   <div class="column delivery">
 
     <div class="column-head">
@@ -1633,7 +1655,13 @@ td{
 
   </div>
 
+
 </div>
+
+
+<!-- =========================================
+     PEDIDOS ATIVOS
+========================================= -->
 
 <section>
 
@@ -1650,6 +1678,7 @@ td{
       </div>
 
     </div>
+
 
     <table>
 
@@ -1673,6 +1702,7 @@ td{
 
       </thead>
 
+
       <tbody id="orders">
 
         <tr>
@@ -1691,7 +1721,9 @@ td{
 
 </section>
 
+
 <script>
+
 
 /*
 ==================================================
@@ -1745,9 +1777,10 @@ const labels = {
 
 };
 
+
 /*
 ==================================================
-TEMPO DESDE O PEDIDO
+IDADE DO PEDIDO
 ==================================================
 */
 
@@ -1773,9 +1806,10 @@ function age(iso){
     : `${m} min`;
 }
 
+
 /*
 ==================================================
-TEMPO MÉDIO DE PREPARO
+TEMPO MÉDIO
 ==================================================
 */
 
@@ -1822,6 +1856,7 @@ function updatePrepTime(minutes){
 
 }
 
+
 /*
 ==================================================
 META DE PEDIDOS
@@ -1844,30 +1879,36 @@ function updateGoal(total){
   const realPercentage =
     (current / meta) * 100;
 
+
   document.getElementById(
     "goal_current"
   ).textContent =
     current;
+
 
   document.getElementById(
     "goal_percent"
   ).textContent =
     `${realPercentage.toFixed(1)}%`;
 
+
   document.getElementById(
     "goal_progress"
   ).style.width =
     `${percentage}%`;
+
 
   const card =
     document.getElementById(
       "goal_card"
     );
 
+
   const message =
     document.getElementById(
       "goal_message"
     );
+
 
   if(current >= meta){
 
@@ -1893,6 +1934,7 @@ function updateGoal(total){
 
 }
 
+
 /*
 ==================================================
 RENDER
@@ -1903,6 +1945,7 @@ function render(data){
 
   const counters =
     data.counters || {};
+
 
   /*
   ================================================
@@ -1935,9 +1978,10 @@ function render(data){
       counters.entregues
     ) || 0;
 
+
   /*
   ================================================
-  CONTADORES PEQUENOS
+  KANBAN
   ================================================
   */
 
@@ -1961,11 +2005,6 @@ function render(data){
   ).textContent =
     entrega;
 
-  /*
-  ================================================
-  CONTADORES GRANDES
-  ================================================
-  */
 
   document.getElementById(
     "aguardando_big"
@@ -1987,6 +2026,7 @@ function render(data){
   ).textContent =
     entrega;
 
+
   /*
   ================================================
   ENTREGUES
@@ -1998,9 +2038,10 @@ function render(data){
   ).textContent =
     entregues;
 
+
   /*
   ================================================
-  TOTAL
+  TOTAL DO DIA
   ================================================
   */
 
@@ -2009,10 +2050,12 @@ function render(data){
       data.total_today
     ) || 0;
 
+
   document.getElementById(
     "total_today"
   ).textContent =
     totalToday;
+
 
   /*
   ================================================
@@ -2024,6 +2067,7 @@ function render(data){
     totalToday
   );
 
+
   /*
   ================================================
   TEMPO MÉDIO
@@ -2033,6 +2077,7 @@ function render(data){
   updatePrepTime(
     data.avg_prep_time || 0
   );
+
 
   /*
   ================================================
@@ -2045,6 +2090,7 @@ function render(data){
       "orders"
     );
 
+
   if(!data.active_orders){
 
     tbody.innerHTML =
@@ -2053,6 +2099,7 @@ function render(data){
     return;
   }
 
+
   if(!data.active_orders.length){
 
     tbody.innerHTML =
@@ -2060,6 +2107,7 @@ function render(data){
 
     return;
   }
+
 
   tbody.innerHTML =
     data.active_orders
@@ -2097,6 +2145,7 @@ function render(data){
 
 }
 
+
 /*
 ==================================================
 RELÓGIO
@@ -2130,9 +2179,10 @@ setInterval(
   1000
 );
 
+
 /*
 ==================================================
-CONEXÃO
+CONEXÃO + TEMPO REAL
 ==================================================
 */
 
@@ -2161,16 +2211,12 @@ async function boot(){
 
   }
 
-  /*
-  ================================================
-  TEMPO REAL
-  ================================================
-  */
 
   const es =
     new EventSource(
       "/events"
     );
+
 
   es.onopen = () => {
 
@@ -2180,6 +2226,7 @@ async function boot(){
       "● Online — tempo real";
 
   };
+
 
   es.onmessage = e => {
 
@@ -2204,6 +2251,7 @@ async function boot(){
 
   };
 
+
   es.onerror = () => {
 
     document.getElementById(
@@ -2214,6 +2262,7 @@ async function boot(){
   };
 
 }
+
 
 /*
 ==================================================
