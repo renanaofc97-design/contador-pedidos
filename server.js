@@ -164,7 +164,8 @@ function dashboardData() {
 ========================= */
 
 function broadcast() {
-  const message = `data: ${JSON.stringify(dashboardData())}\n\n`;
+  const message =
+    "data: " + JSON.stringify(dashboardData()) + "\n\n";
 
   for (const res of clients) {
     res.write(message);
