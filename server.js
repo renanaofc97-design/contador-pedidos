@@ -169,7 +169,7 @@ function broadcast() {
   for (const res of clients) {
     res.write(message);
   }
-
+}
 /* =========================
    BUSCAR HISTÓRICO DO DIA
 ========================= */
