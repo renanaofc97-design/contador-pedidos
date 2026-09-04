@@ -9,16 +9,13 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
 const PORT = process.env.PORT || 3000;
-
 const DATA_FILE = path.join(__dirname, "data.json");
 
 const CARDAPIO_API_KEY = process.env.CARDAPIO_API_KEY;
-
 const CARDAPIO_API_URL =
   "https://integracao.cardapioweb.com/api/partner/v1";
 
 let orders = {};
-
 const clients = new Set();
 
 /* =========================
@@ -82,7 +79,7 @@ function getTodayString() {
 }
 
 /* =========================
-   VERIFICAR DATA DO PEDIDO
+   VERIFICAR DATA
 ========================= */
 
 function isToday(dateString) {
@@ -102,37 +99,22 @@ function isToday(dateString) {
       );
 
     return dataPedido === getTodayString();
-
   } catch (error) {
     return false;
   }
 }
 
 /* =========================
-   SALVAR / ATUALIZAR PEDIDO
+   SALVAR PEDIDO
 ========================= */
 
 function saveOrder(pedido) {
-  if (!pedido) {
-    return false;
-  }
-
-  if (!pedido.id) {
+  if (!pedido || !pedido.id) {
     return false;
   }
 
   const id = String(pedido.id);
-
   const existente = orders[id] || {};
-
-  /*
-    Nunca apagar informações que já temos.
-
-    Isso é importante porque:
-    ORDER_CREATED pode trazer created_at
-    e depois ORDER_STATUS_UPDATED pode
-    trazer somente status.
-  */
 
   orders[id] = {
     ...existente,
@@ -176,11 +158,7 @@ function getCounters() {
   for (const id in orders) {
     const order = orders[id];
 
-    if (!order) {
-      continue;
-    }
-
-    if (!order.created_at) {
+    if (!order || !order.created_at) {
       continue;
     }
 
@@ -204,9 +182,7 @@ function getCounters() {
       continue;
     }
 
-    const status = order.status;
-
-    switch (status) {
+    switch (order.status) {
 
       case "waiting_confirmation":
       case "pending_payment":
@@ -252,29 +228,22 @@ function getCounters() {
 }
 
 /* =========================
-   TOTAL DE PEDIDOS HOJE
+   TOTAL DE HOJE
 ========================= */
 
 function getTotalToday() {
   const hoje = getTodayString();
-
   let total = 0;
 
   for (const id in orders) {
     const order = orders[id];
 
-    if (!order) {
+    if (!order || !order.created_at) {
       continue;
     }
-
-    if (!order.created_at) {
-      continue;
-    }
-
-    let dataPedido;
 
     try {
-      dataPedido =
+      const dataPedido =
         new Intl.DateTimeFormat(
           "en-CA",
           {
@@ -283,12 +252,13 @@ function getTotalToday() {
         ).format(
           new Date(order.created_at)
         );
+
+      if (dataPedido === hoje) {
+        total++;
+      }
+
     } catch (error) {
       continue;
-    }
-
-    if (dataPedido === hoje) {
-      total++;
     }
   }
 
@@ -307,7 +277,7 @@ function dashboardData() {
 }
 
 /* =========================
-   ENVIAR PARA O PAINEL
+   ENVIAR AO PAINEL
 ========================= */
 
 function broadcast() {
@@ -328,7 +298,7 @@ function broadcast() {
 }
 
 /* =========================
-   PROCESSAR RESPOSTA DA API
+   EXTRAIR PEDIDOS
 ========================= */
 
 function extractOrders(data) {
@@ -340,15 +310,11 @@ function extractOrders(data) {
     return data;
   }
 
-  if (
-    Array.isArray(data.orders)
-  ) {
+  if (Array.isArray(data.orders)) {
     return data.orders;
   }
 
-  if (
-    Array.isArray(data.data)
-  ) {
+  if (Array.isArray(data.data)) {
     return data.data;
   }
 
@@ -370,17 +336,11 @@ function extractOrders(data) {
 }
 
 /* =========================
-   FAZER CONSULTA NA API
+   CONSULTAR API
 ========================= */
 
 async function requestOrders(url) {
-  /*
-    Primeiro tenta com X-API-KEY,
-    que é a autenticação que já
-    funcionou no histórico.
-  */
-
-  let response = await fetch(
+  const response = await fetch(
     url,
     {
       method: "GET",
@@ -395,21 +355,13 @@ async function requestOrders(url) {
     }
   );
 
-  let text =
+  const text =
     await response.text();
 
   console.log(
-    "Status API com X-API-KEY:",
+    "Status API:",
     response.status
   );
-
-  /*
-    Se X-API-KEY não funcionar,
-    devolvemos a resposta para
-    a função principal analisar.
-
-    Não vamos inventar um token OAuth.
-  */
 
   return {
     response: response,
@@ -418,13 +370,12 @@ async function requestOrders(url) {
 }
 
 /* =========================
-   SINCRONIZAR /orders
+   SINCRONIZAR PEDIDOS
 ========================= */
 
 async function syncOrders() {
 
   if (!CARDAPIO_API_KEY) {
-
     console.error(
       "ERRO: CARDAPIO_API_KEY não configurada."
     );
@@ -444,13 +395,6 @@ async function syncOrders() {
 
     const agora = new Date();
 
-    /*
-      O /orders retorna pedidos
-      modificados recentemente.
-
-      Buscamos as últimas 8 horas.
-    */
-
     const oitoHorasAtras =
       new Date(
         agora.getTime() -
@@ -463,14 +407,6 @@ async function syncOrders() {
     let totalRecebidos = 0;
     let totalNovos = 0;
     let totalAtualizados = 0;
-
-    /*
-      Tentamos algumas páginas.
-
-      Isso evita perder pedidos
-      quando o restaurante tiver
-      mais de 100 pedidos.
-    */
 
     for (
       let page = 1;
@@ -500,9 +436,7 @@ async function syncOrders() {
       );
 
       const result =
-        await requestOrders(
-          url
-        );
+        await requestOrders(url);
 
       const response =
         result.response;
@@ -517,14 +451,7 @@ async function syncOrders() {
           response.status
         );
 
-        console.error(
-          text
-        );
-
-        /*
-          Se a primeira página
-          falhar, não adianta continuar.
-        */
+        console.error(text);
 
         if (page === 1) {
           return;
@@ -536,33 +463,20 @@ async function syncOrders() {
       let data;
 
       try {
-
-        data =
-          JSON.parse(text);
-
+        data = JSON.parse(text);
       } catch (error) {
 
         console.error(
           "A resposta da API não é JSON:"
         );
 
-        console.error(
-          text
-        );
+        console.error(text);
 
         return;
       }
 
-      /*
-        Mostra a resposta para
-        podermos identificar exatamente
-        o formato devolvido pela API.
-      */
-
       console.log(
-        "Resposta recebida na página " +
-        page +
-        ":"
+        "Resposta recebida:"
       );
 
       console.log(
@@ -579,9 +493,7 @@ async function syncOrders() {
         pedidos.length
       );
 
-      if (
-        pedidos.length === 0
-      ) {
+      if (pedidos.length === 0) {
         break;
       }
 
@@ -592,18 +504,12 @@ async function syncOrders() {
         const pedido of pedidos
       ) {
 
-        if (!pedido) {
-          continue;
-        }
-
-        if (!pedido.id) {
+        if (!pedido || !pedido.id) {
           continue;
         }
 
         const novo =
-          saveOrder(
-            pedido
-          );
+          saveOrder(pedido);
 
         if (novo) {
           totalNovos++;
@@ -612,14 +518,7 @@ async function syncOrders() {
         }
       }
 
-      /*
-        Se vieram menos de 100,
-        provavelmente acabou a paginação.
-      */
-
-      if (
-        pedidos.length < 100
-      ) {
+      if (pedidos.length < 100) {
         break;
       }
     }
@@ -679,9 +578,7 @@ app.post(
 
       console.log(
         "Webhook recebido:",
-        JSON.stringify(
-          event
-        )
+        JSON.stringify(event)
       );
 
       if (!event.order_id) {
@@ -695,21 +592,10 @@ app.post(
       }
 
       const id =
-        String(
-          event.order_id
-        );
+        String(event.order_id);
 
       const existente =
         orders[id] || {};
-
-      /*
-        IMPORTANTE:
-
-        Se o webhook for somente
-        ORDER_STATUS_UPDATED,
-        preservamos created_at
-        que já estava salvo.
-      */
 
       orders[id] = {
 
