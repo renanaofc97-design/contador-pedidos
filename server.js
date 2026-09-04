@@ -7,1542 +7,946 @@ const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 const DATA_FILE = path.join(__dirname, "data.json");
 
-const CARDAPIO_API_KEY = process.env.CARDAPIO_API_KEY;
-const CARDAPIO_API_URL =
-"https://integracao.cardapioweb.com/api/partner/v1";
+const API_KEY = process.env.CARDAPIO_API_KEY;
+
+const MERCHANT_ID = "51038";
 
 let orders = {};
-const clients = new Set();
-
-/* =========================
-CARREGAR DADOS
-========================= */
+let clients = [];
 
 function loadData() {
-try {
-if (fs.existsSync(DATA_FILE)) {
-const data = JSON.parse(
-fs.readFileSync(DATA_FILE, "utf8")
-);
+  try {
+    if (fs.existsSync(DATA_FILE)) {
+      const data = JSON.parse(
+        fs.readFileSync(DATA_FILE, "utf8")
+      );
 
-```
-  if (data && data.orders) {
-    orders = data.orders;
+      if (data && data.orders) {
+        orders = data.orders;
+      }
+    }
+  } catch (error) {
+    console.error("Erro ao carregar data.json:", error.message);
   }
-}
-```
-
-} catch (error) {
-console.error(
-"Erro ao carregar data.json:",
-error.message
-);
-
-```
-orders = {};
-```
-
-}
 }
 
 function saveData() {
-try {
-fs.writeFileSync(
-DATA_FILE,
-JSON.stringify(
-{
-orders: orders
-},
-null,
-2
-)
-);
-} catch (error) {
-console.error(
-"Erro ao salvar data.json:",
-error.message
-);
+  try {
+    fs.writeFileSync(
+      DATA_FILE,
+      JSON.stringify({ orders }, null, 2)
+    );
+  } catch (error) {
+    console.error("Erro ao salvar data.json:", error.message);
+  }
 }
-}
-
-loadData();
-
-/* =========================
-DATA DE HOJE
-========================= */
 
 function getTodayString() {
-return new Intl.DateTimeFormat(
-"en-CA",
-{
-timeZone: "America/Sao_Paulo"
-}
-).format(new Date());
-}
+  const now = new Date();
 
-/* =========================
-VERIFICAR DATA
-========================= */
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
 
 function isToday(dateString) {
-if (!dateString) {
-return false;
-}
+  if (!dateString) return false;
 
-try {
-const dataPedido =
-new Intl.DateTimeFormat(
-"en-CA",
-{
-timeZone: "America/Sao_Paulo"
-}
-).format(
-new Date(dateString)
-);
+  const date = new Date(dateString);
 
-```
-return dataPedido === getTodayString();
-```
+  if (Number.isNaN(date.getTime())) {
+    return false;
+  }
 
-} catch (error) {
-return false;
-}
-}
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
 
-/* =========================
-SALVAR PEDIDO
-========================= */
+  return `${year}-${month}-${day}` === getTodayString();
+}
 
 function saveOrder(pedido) {
-
-if (!pedido || !pedido.id) {
-return false;
-}
-
-const id = String(pedido.id);
-const existente = orders[id] || {};
-
-orders[id] = {
-
-```
-...existente,
-...pedido,
-
-id: pedido.id,
-
-status:
-  pedido.status ||
-  existente.status,
-
-created_at:
-  pedido.created_at ||
-  existente.created_at,
-
-updated_at:
-  pedido.updated_at ||
-  existente.updated_at ||
-  new Date().toISOString(),
-
-/*
-  NÃO sobrescrever horários
-  já registrados.
-*/
-
-ready_at:
-  existente.ready_at ||
-  pedido.ready_at ||
-  null,
-
-prep_time_minutes:
-  existente.prep_time_minutes ??
-  pedido.prep_time_minutes ??
-  null,
-
-released_at:
-  existente.released_at ||
-  pedido.released_at ||
-  null,
-
-delivered_at:
-  existente.delivered_at ||
-  pedido.delivered_at ||
-  null,
-
-delivery_time_minutes:
-  existente.delivery_time_minutes ??
-  pedido.delivery_time_minutes ??
-  null
-```
-
-};
-
-return !existente.id;
-}
-
-/* =========================
-REGISTRAR PEDIDO PRONTO
-========================= */
-
-function registerReady(order, eventCreatedAt) {
-
-if (!order || !order.created_at) {
-return;
-}
-
-/*
-Só registra a primeira vez
-que o pedido fica pronto.
-*/
-
-if (order.ready_at) {
-return;
-}
-
-const readyAt =
-eventCreatedAt ||
-new Date().toISOString();
-
-const inicio =
-new Date(order.created_at).getTime();
-
-const fim =
-new Date(readyAt).getTime();
-
-if (
-!Number.isFinite(inicio) ||
-!Number.isFinite(fim) ||
-fim <= inicio
-) {
-return;
-}
-
-const minutos =
-(fim - inicio) / 60000;
-
-/*
-Ignora valores absurdos.
-*/
-
-if (
-minutos < 0 ||
-minutos > 180
-) {
-
-```
-console.log(
-  "Tempo de preparo ignorado:",
-  minutos,
-  "minutos"
-);
-
-return;
-```
-
-}
-
-order.ready_at = readyAt;
-
-order.prep_time_minutes =
-Number(
-minutos.toFixed(2)
-);
-
-console.log(
-"TEMPO DE PREPARO REGISTRADO:",
-order.id,
-"=>",
-order.prep_time_minutes,
-"min"
-);
-}
-
-/* =========================
-REGISTRAR SAÍDA PARA ENTREGA
-========================= */
-
-function registerReleased(order, eventCreatedAt) {
-
-if (!order) {
-return;
-}
-
-/*
-Só registra a primeira vez
-que o pedido sai para entrega.
-*/
-
-if (order.released_at) {
-return;
-}
-
-const releasedAt =
-eventCreatedAt ||
-new Date().toISOString();
-
-order.released_at = releasedAt;
-
-console.log(
-"SAÍDA PARA ENTREGA REGISTRADA:",
-order.id,
-"=>",
-releasedAt
-);
-}
-
-/* =========================
-REGISTRAR PEDIDO ENTREGUE
-========================= */
-
-function registerDelivered(order, eventCreatedAt) {
-
-if (!order) {
-return;
-}
-
-/*
-Se não temos o momento em que
-saiu para entrega, não conseguimos
-calcular o tempo corretamente.
-*/
-
-if (!order.released_at) {
-
-```
-console.log(
-  "Pedido entregue sem released_at:",
-  order.id
-);
-
-/*
-  Guarda o horário da entrega mesmo assim,
-  para podermos identificar o problema.
-*/
-
-if (!order.delivered_at) {
-  order.delivered_at =
-    eventCreatedAt ||
-    new Date().toISOString();
-}
-
-return;
-```
-
-}
-
-/*
-Só registra a primeira entrega.
-*/
-
-if (order.delivered_at) {
-return;
-}
-
-const deliveredAt =
-eventCreatedAt ||
-new Date().toISOString();
-
-const inicio =
-new Date(
-order.released_at
-).getTime();
-
-const fim =
-new Date(
-deliveredAt
-).getTime();
-
-if (
-!Number.isFinite(inicio) ||
-!Number.isFinite(fim) ||
-fim <= inicio
-) {
-
-```
-console.log(
-  "Tempo de entrega inválido:",
-  order.id
-);
-
-return;
-```
-
-}
-
-const minutos =
-(fim - inicio) / 60000;
-
-/*
-Ignora valores absurdos.
-4 horas já seria provavelmente
-algum dado incorreto.
-*/
-
-if (
-minutos < 0 ||
-minutos > 240
-) {
-
-```
-console.log(
-  "Tempo de entrega ignorado:",
-  order.id,
-  "=>",
-  minutos,
-  "min"
-);
-
-return;
-```
-
-}
-
-order.delivered_at =
-deliveredAt;
-
-order.delivery_time_minutes =
-Number(
-minutos.toFixed(2)
-);
-
-console.log(
-"TEMPO DE ENTREGA REGISTRADO:",
-order.id,
-"=>",
-order.delivery_time_minutes,
-"min"
-);
-}
-
-/* =========================
-TEMPO MÉDIO DE PREPARO
-========================= */
-
-function getAveragePrepTime() {
-
-const tempos = [];
-
-for (const id in orders) {
-
-```
-const order =
-  orders[id];
-
-if (
-  !order ||
-  !order.created_at ||
-  !order.ready_at
-) {
-  continue;
-}
-
-if (!isToday(order.created_at)) {
-  continue;
-}
-
-const tempo =
-  Number(
-    order.prep_time_minutes
-  );
-
-if (
-  Number.isFinite(tempo) &&
-  tempo >= 0 &&
-  tempo <= 180
-) {
-  tempos.push(tempo);
-}
-```
-
-}
-
-if (!tempos.length) {
-return 0;
-}
-
-const soma =
-tempos.reduce(
-(total, tempo) =>
-total + tempo,
-0
-);
-
-const media =
-soma / tempos.length;
-
-return Number(
-media.toFixed(1)
-);
-}
-
-/* =========================
-TEMPO MÉDIO DE ENTREGA
-========================= */
-
-function getAverageDeliveryTime() {
-
-const tempos = [];
-
-for (const id in orders) {
-
-```
-const order =
-  orders[id];
-
-if (
-  !order ||
-  !order.created_at ||
-  !order.released_at ||
-  !order.delivered_at
-) {
-  continue;
-}
-
-/*
-  Considera pedidos criados hoje.
-*/
-
-if (!isToday(order.created_at)) {
-  continue;
-}
-
-const tempo =
-  Number(
-    order.delivery_time_minutes
-  );
-
-if (
-  Number.isFinite(tempo) &&
-  tempo >= 0 &&
-  tempo <= 240
-) {
-
-  tempos.push(tempo);
-
-}
-```
-
-}
-
-if (!tempos.length) {
-return 0;
-}
-
-const soma =
-tempos.reduce(
-(total, tempo) =>
-total + tempo,
-0
-);
-
-const media =
-soma / tempos.length;
-
-return Number(
-media.toFixed(1)
-);
-}
-
-/* =========================
-CONTADORES
-========================= */
-
-function getCounters() {
-
-const counters = {
-
-```
-aguardando: 0,
-em_preparo: 0,
-prontos: 0,
-em_entrega: 0,
-entregues: 0,
-cancelados: 0
-```
-
-};
-
-const hoje =
-getTodayString();
-
-for (const id in orders) {
-
-```
-const order =
-  orders[id];
-
-if (
-  !order ||
-  !order.created_at
-) {
-  continue;
-}
-
-let dataPedido;
-
-try {
-
-  dataPedido =
-    new Intl.DateTimeFormat(
-      "en-CA",
-      {
-        timeZone:
-          "America/Sao_Paulo"
-      }
-    ).format(
-      new Date(
-        order.created_at
-      )
-    );
-
-} catch (error) {
-  continue;
-}
-
-if (dataPedido !== hoje) {
-  continue;
-}
-
-switch (order.status) {
-
-  case "waiting_confirmation":
-  case "pending_payment":
-  case "pending_online_payment":
-  case "waiting_payment":
-
-    counters.aguardando++;
-    break;
-
-  case "confirmed":
-  case "scheduled_confirmed":
-
-    counters.em_preparo++;
-    break;
-
-  case "ready":
-  case "waiting_to_catch":
-
-    counters.prontos++;
-    break;
-
-  case "released":
-  case "out_for_delivery":
-
-    counters.em_entrega++;
-    break;
-
-  case "delivered":
-  case "closed":
-
-    counters.entregues++;
-    break;
-
-  case "canceled":
-  case "canceling":
-
-    counters.cancelados++;
-    break;
-}
-```
-
-}
-
-return counters;
-}
-
-/* =========================
-TOTAL DE HOJE
-========================= */
-
-function getTotalToday() {
-
-const hoje =
-getTodayString();
-
-let total = 0;
-
-for (const id in orders) {
-
-```
-const order =
-  orders[id];
-
-if (
-  !order ||
-  !order.created_at
-) {
-  continue;
-}
-
-try {
-
-  const dataPedido =
-    new Intl.DateTimeFormat(
-      "en-CA",
-      {
-        timeZone:
-          "America/Sao_Paulo"
-      }
-    ).format(
-      new Date(
-        order.created_at
-      )
-    );
-
-  if (
-    dataPedido === hoje
-  ) {
-    total++;
-  }
-
-} catch (error) {
-  continue;
-}
-```
-
-}
-
-return total;
-}
-
-/* =========================
-PEDIDOS ATIVOS
-========================= */
-
-function getActiveOrders() {
-
-const ativos = [];
-
-for (const id in orders) {
-
-```
-const order =
-  orders[id];
-
-if (
-  !order ||
-  !order.created_at
-) {
-  continue;
-}
-
-if (!isToday(order.created_at)) {
-  continue;
-}
-
-/*
-  Não mostrar pedidos encerrados
-  ou cancelados na lista ativa.
-*/
-
-if (
-  order.status === "closed" ||
-  order.status === "delivered" ||
-  order.status === "canceled" ||
-  order.status === "canceling"
-) {
-  continue;
-}
-
-ativos.push(order);
-```
-
-}
-
-/*
-Mais recentes primeiro
-*/
-
-ativos.sort(
-(a, b) =>
-new Date(b.created_at) -
-new Date(a.created_at)
-);
-
-return ativos;
-}
-
-/* =========================
-DASHBOARD
-========================= */
-
-function dashboardData() {
-
-return {
-
-```
-total_today:
-  getTotalToday(),
-
-counters:
-  getCounters(),
-
-avg_prep_time:
-  getAveragePrepTime(),
-
-avg_delivery_time:
-  getAverageDeliveryTime(),
-
-active_orders:
-  getActiveOrders()
-```
-
-};
-}
-
-/* =========================
-ENVIAR AO PAINEL
-========================= */
-
-function broadcast() {
-
-const message =
-"data: " +
-JSON.stringify(
-dashboardData()
-) +
-"\n\n";
-
-for (const res of clients) {
-
-```
-try {
-
-  res.write(message);
-
-} catch (error) {
-
-  clients.delete(res);
-
-}
-```
-
-}
-}
-
-/* =========================
-EXTRAIR PEDIDOS
-========================= */
-
-function extractOrders(data) {
-
-if (!data) {
-return [];
-}
-
-if (Array.isArray(data)) {
-return data;
-}
-
-if (Array.isArray(data.orders)) {
-return data.orders;
-}
-
-if (Array.isArray(data.data)) {
-return data.data;
-}
-
-if (
-data.data &&
-Array.isArray(data.data.orders)
-) {
-return data.data.orders;
-}
-
-if (
-data.results &&
-Array.isArray(data.results)
-) {
-return data.results;
-}
-
-return [];
-}
-
-/* =========================
-CONSULTAR API
-========================= */
-
-async function requestOrders(url) {
-
-const response =
-await fetch(
-url,
-{
-method: "GET",
-
-```
-    headers: {
-
-      "X-API-KEY":
-        CARDAPIO_API_KEY,
-
-      "Accept":
-        "application/json"
-
-    }
-  }
-);
-```
-
-const text =
-await response.text();
-
-console.log(
-"Status API:",
-response.status
-);
-
-return {
-response: response,
-text: text
-};
-}
-
-/* =========================
-SINCRONIZAR PEDIDOS
-========================= */
-
-async function syncOrders() {
-
-if (!CARDAPIO_API_KEY) {
-
-```
-console.error(
-  "ERRO: CARDAPIO_API_KEY não configurada."
-);
-
-return;
-```
-
-}
-
-try {
-
-```
-console.log(
-  "----------------------------------------"
-);
-
-console.log(
-  "Consultando pedidos no Cardápio Web..."
-);
-
-const agora =
-  new Date();
-
-const oitoHorasAtras =
-  new Date(
-    agora.getTime() -
-    8 * 60 * 60 * 1000
-  );
-
-const updatedSince =
-  oitoHorasAtras.toISOString();
-
-let totalRecebidos = 0;
-let totalNovos = 0;
-let totalAtualizados = 0;
-
-for (
-  let page = 1;
-  page <= 10;
-  page++
-) {
-
-  const url =
-    CARDAPIO_API_URL +
-    "/orders" +
-    "?updated_since=" +
-    encodeURIComponent(
-      updatedSince
-    ) +
-    "&page=" +
-    page +
-    "&per_page=100";
-
-  console.log(
-    "Consultando página:",
-    page
-  );
-
-  const result =
-    await requestOrders(
-      url
-    );
-
-  const response =
-    result.response;
-
-  const text =
-    result.text;
-
-  if (!response.ok) {
-
-    console.error(
-      "Erro Cardápio Web:",
-      response.status
-    );
-
-    console.error(text);
-
-    if (page === 1) {
-      return;
-    }
-
-    break;
-  }
-
-  let data;
-
-  try {
-
-    data =
-      JSON.parse(text);
-
-  } catch (error) {
-
-    console.error(
-      "A resposta da API não é JSON:"
-    );
-
-    console.error(text);
-
-    return;
-  }
-
-  const pedidos =
-    extractOrders(data);
-
-  console.log(
-    "Pedidos recebidos na página " +
-    page +
-    ":",
-    pedidos.length
-  );
-
-  if (
-    pedidos.length === 0
-  ) {
-    break;
-  }
-
-  totalRecebidos +=
-    pedidos.length;
-
-  for (
-    const pedido of pedidos
-  ) {
-
-    if (
-      !pedido ||
-      !pedido.id
-    ) {
-      continue;
-    }
-
-    const novo =
-      saveOrder(pedido);
-
-    const order =
-      orders[
-        String(pedido.id)
-      ];
-
-    /*
-      PEDIDO PRONTO
-    */
-
-    if (
-      pedido.status === "ready" ||
-      pedido.status === "waiting_to_catch"
-    ) {
-
-      registerReady(
-        order,
-        pedido.updated_at ||
-        pedido.created_at ||
-        new Date().toISOString()
-      );
-    }
-
-    /*
-      SAIU PARA ENTREGA
-    */
-
-    if (
-      pedido.status === "released" ||
-      pedido.status === "out_for_delivery"
-    ) {
-
-      registerReleased(
-        order,
-        pedido.updated_at ||
-        pedido.created_at ||
-        new Date().toISOString()
-      );
-    }
-
-    /*
-      ENTREGUE
-    */
-
-    if (
-      pedido.status === "delivered" ||
-      pedido.status === "closed"
-    ) {
-
-      registerDelivered(
-        order,
-        pedido.updated_at ||
-        pedido.created_at ||
-        new Date().toISOString()
-      );
-    }
-
-    if (novo) {
-      totalNovos++;
-    } else {
-      totalAtualizados++;
-    }
-  }
-
-  if (
-    pedidos.length < 100
-  ) {
-    break;
-  }
-}
-
-saveData();
-
-console.log(
-  "Total recebidos pela API:",
-  totalRecebidos
-);
-
-console.log(
-  "Novos pedidos:",
-  totalNovos
-);
-
-console.log(
-  "Pedidos atualizados:",
-  totalAtualizados
-);
-
-console.log(
-  "TOTAL DE PEDIDOS HOJE:",
-  getTotalToday()
-);
-
-console.log(
-  "TEMPO MÉDIO DE PREPARO:",
-  getAveragePrepTime(),
-  "min"
-);
-
-console.log(
-  "TEMPO MÉDIO DE ENTREGA:",
-  getAverageDeliveryTime(),
-  "min"
-);
-
-console.log(
-  "CONTADORES:",
-  JSON.stringify(
-    getCounters()
-  )
-);
-
-broadcast();
-```
-
-} catch (error) {
-
-```
-console.error(
-  "Erro ao consultar /orders:",
-  error.message
-);
-```
-
-}
-}
-
-/* =========================
-WEBHOOK
-========================= */
-
-app.post(
-"/webhook/cardapioweb",
-(req, res) => {
-
-```
-try {
-
-  const event =
-    req.body;
-
-  console.log(
-    "Webhook recebido:",
-    JSON.stringify(event)
-  );
-
-  if (
-    !event.order_id
-  ) {
-
-    return res
-      .status(400)
-      .json({
-        error:
-          "order_id não informado"
-      });
-
-  }
+  if (!pedido) return null;
 
   const id =
-    String(
-      event.order_id
-    );
+    pedido.id ||
+    pedido.order_id ||
+    pedido.code;
 
-  const existente =
-    orders[id] || {};
+  if (!id) {
+    return null;
+  }
+
+  const existente = orders[id] || {};
 
   orders[id] = {
-
     ...existente,
+    ...pedido,
 
-    id:
-      event.order_id,
-
-    status:
-      event.order_status ||
-      existente.status,
-
-    event_type:
-      event.event_type ||
-      existente.event_type,
-
-    /*
-      Mantém a criação original.
-    */
+    id: id,
 
     created_at:
       existente.created_at ||
-      event.created_at,
-
-    updated_at:
+      pedido.created_at ||
       new Date().toISOString(),
 
     ready_at:
       existente.ready_at ||
+      pedido.ready_at ||
       null,
 
     prep_time_minutes:
       existente.prep_time_minutes ??
+      pedido.prep_time_minutes ??
       null,
 
     released_at:
       existente.released_at ||
+      pedido.released_at ||
       null,
 
     delivered_at:
       existente.delivered_at ||
+      pedido.delivered_at ||
       null,
 
     delivery_time_minutes:
       existente.delivery_time_minutes ??
+      pedido.delivery_time_minutes ??
       null
-
   };
 
-  /*
-    =========================
-    PRONTO
-    =========================
-  */
+  return orders[id];
+}
 
-  if (
-    event.order_status === "ready" ||
-    event.order_status === "waiting_to_catch"
-  ) {
+function registerReady(order, eventCreatedAt) {
+  if (!order) return;
 
-    registerReady(
-      orders[id],
-      event.created_at
-    );
+  if (order.ready_at) return;
 
+  const readyAt =
+    eventCreatedAt ||
+    new Date().toISOString();
+
+  if (!order.created_at) {
+    return;
   }
 
-  /*
-    =========================
-    SAIU PARA ENTREGA
-    =========================
-  */
+  const inicio = new Date(order.created_at).getTime();
+  const fim = new Date(readyAt).getTime();
 
   if (
-    event.order_status === "released" ||
-    event.order_status === "out_for_delivery"
+    !Number.isFinite(inicio) ||
+    !Number.isFinite(fim) ||
+    fim <= inicio
   ) {
-
-    registerReleased(
-      orders[id],
-      event.created_at
-    );
-
-  }
-
-  /*
-    =========================
-    ENTREGUE
-    =========================
-
-    Aceitamos os dois:
-
-    delivered
-    closed
-
-  */
-
-  if (
-    event.order_status === "delivered" ||
-    event.order_status === "closed"
-  ) {
-
-    registerDelivered(
-      orders[id],
-      event.created_at
-    );
-
-  }
-
-  saveData();
-
-  console.log(
-    "Pedido atualizado pelo webhook:",
-    id
-  );
-
-  console.log(
-    "Status:",
-    orders[id].status
-  );
-
-  if (
-    orders[id].prep_time_minutes
-  ) {
-
     console.log(
-      "Tempo de preparo:",
-      orders[id]
-        .prep_time_minutes,
+      "Tempo de preparo inválido:",
+      order.id
+    );
+    return;
+  }
+
+  const minutos =
+    (fim - inicio) / 60000;
+
+  if (minutos < 0 || minutos > 180) {
+    console.log(
+      "Tempo de preparo ignorado:",
+      order.id,
+      "=>",
+      minutos,
       "min"
     );
-
+    return;
   }
 
-  if (
-    orders[id].delivery_time_minutes
-  ) {
+  order.ready_at = readyAt;
 
+  order.prep_time_minutes =
+    Number(minutos.toFixed(2));
+
+  console.log(
+    "TEMPO DE PREPARO REGISTRADO:",
+    order.id,
+    "=>",
+    order.prep_time_minutes,
+    "min"
+  );
+}
+
+function registerReleased(order, eventCreatedAt) {
+  if (!order) return;
+
+  if (order.released_at) return;
+
+  const releasedAt =
+    eventCreatedAt ||
+    new Date().toISOString();
+
+  order.released_at = releasedAt;
+
+  console.log(
+    "SAÍDA PARA ENTREGA REGISTRADA:",
+    order.id,
+    "=>",
+    releasedAt
+  );
+}
+
+function registerDelivered(order, eventCreatedAt) {
+  if (!order) return;
+
+  if (!order.released_at) {
     console.log(
-      "Tempo de entrega:",
-      orders[id]
-        .delivery_time_minutes,
-      "min"
+      "Pedido entregue sem released_at:",
+      order.id
     );
 
+    if (!order.delivered_at) {
+      order.delivered_at =
+        eventCreatedAt ||
+        new Date().toISOString();
+    }
+
+    return;
   }
 
+  if (order.delivered_at) return;
+
+  const deliveredAt =
+    eventCreatedAt ||
+    new Date().toISOString();
+
+  const inicio =
+    new Date(order.released_at).getTime();
+
+  const fim =
+    new Date(deliveredAt).getTime();
+
+  if (
+    !Number.isFinite(inicio) ||
+    !Number.isFinite(fim) ||
+    fim <= inicio
+  ) {
+    console.log(
+      "Tempo de entrega inválido:",
+      order.id
+    );
+    return;
+  }
+
+  const minutos =
+    (fim - inicio) / 60000;
+
+  if (minutos < 0 || minutos > 240) {
+    console.log(
+      "Tempo de entrega ignorado:",
+      order.id,
+      "=>",
+      minutos,
+      "min"
+    );
+    return;
+  }
+
+  order.delivered_at = deliveredAt;
+
+  order.delivery_time_minutes =
+    Number(minutos.toFixed(2));
+
   console.log(
-    "TEMPO MÉDIO DE PREPARO:",
-    getAveragePrepTime(),
+    "TEMPO DE ENTREGA REGISTRADO:",
+    order.id,
+    "=>",
+    order.delivery_time_minutes,
     "min"
   );
+}
 
-  console.log(
-    "TEMPO MÉDIO DE ENTREGA:",
-    getAverageDeliveryTime(),
-    "min"
+function getAveragePrepTime() {
+  const tempos = [];
+
+  for (const id in orders) {
+    const order = orders[id];
+
+    if (
+      !order ||
+      !order.created_at ||
+      !order.ready_at
+    ) {
+      continue;
+    }
+
+    if (!isToday(order.created_at)) {
+      continue;
+    }
+
+    const tempo =
+      Number(order.prep_time_minutes);
+
+    if (
+      Number.isFinite(tempo) &&
+      tempo >= 0 &&
+      tempo <= 180
+    ) {
+      tempos.push(tempo);
+    }
+  }
+
+  if (!tempos.length) {
+    return 0;
+  }
+
+  const soma = tempos.reduce(
+    (total, tempo) =>
+      total + tempo,
+    0
   );
 
-  console.log(
-    "TOTAL DE PEDIDOS HOJE:",
-    getTotalToday()
+  const media =
+    soma / tempos.length;
+
+  return Number(
+    media.toFixed(1)
+  );
+}
+
+function getAverageDeliveryTime() {
+  const tempos = [];
+
+  for (const id in orders) {
+    const order = orders[id];
+
+    if (
+      !order ||
+      !order.created_at ||
+      !order.released_at ||
+      !order.delivered_at
+    ) {
+      continue;
+    }
+
+    if (!isToday(order.created_at)) {
+      continue;
+    }
+
+    const tempo =
+      Number(order.delivery_time_minutes);
+
+    if (
+      Number.isFinite(tempo) &&
+      tempo >= 0 &&
+      tempo <= 240
+    ) {
+      tempos.push(tempo);
+    }
+  }
+
+  if (!tempos.length) {
+    return 0;
+  }
+
+  const soma = tempos.reduce(
+    (total, tempo) =>
+      total + tempo,
+    0
   );
 
-  broadcast();
+  const media =
+    soma / tempos.length;
 
-  res.json({
-    success: true
+  return Number(
+    media.toFixed(1)
+  );
+}
+
+function getCounters() {
+  const counters = {
+    waiting_confirmation: 0,
+    pending_payment: 0,
+    pending_online_payment: 0,
+    confirmed: 0,
+    scheduled_confirmed: 0,
+    ready: 0,
+    waiting_to_catch: 0,
+    released: 0
+  };
+
+  for (const id in orders) {
+    const order = orders[id];
+
+    if (!order) continue;
+
+    if (!isToday(order.created_at)) {
+      continue;
+    }
+
+    const status = order.status;
+
+    if (
+      Object.prototype.hasOwnProperty.call(
+        counters,
+        status
+      )
+    ) {
+      counters[status]++;
+    }
+  }
+
+  return counters;
+}
+
+function getTotalToday() {
+  let total = 0;
+
+  for (const id in orders) {
+    const order = orders[id];
+
+    if (!order) continue;
+
+    if (isToday(order.created_at)) {
+      total++;
+    }
+  }
+
+  return total;
+}
+
+function getActiveOrders() {
+  const ativos = [];
+
+  for (const id in orders) {
+    const order = orders[id];
+
+    if (!order) continue;
+
+    if (!isToday(order.created_at)) {
+      continue;
+    }
+
+    const status = order.status;
+
+    if (
+      status === "canceled" ||
+      status === "closed" ||
+      status === "delivered"
+    ) {
+      continue;
+    }
+
+    ativos.push(order);
+  }
+
+  ativos.sort((a, b) => {
+    const dateA =
+      new Date(a.created_at).getTime();
+
+    const dateB =
+      new Date(b.created_at).getTime();
+
+    return dateA - dateB;
   });
 
-} catch (error) {
+  return ativos;
+}
 
-  console.error(
-    "Erro no webhook:",
-    error.message
+function dashboardData() {
+  return {
+    total_today: getTotalToday(),
+
+    counters: getCounters(),
+
+    avg_prep_time:
+      getAveragePrepTime(),
+
+    avg_delivery_time:
+      getAverageDeliveryTime(),
+
+    active_orders:
+      getActiveOrders()
+  };
+}
+
+function broadcast() {
+  const data =
+    JSON.stringify(
+      dashboardData()
+    );
+
+  clients.forEach((client) => {
+    try {
+      client.write(
+        `data: ${data}\n\n`
+      );
+    } catch (error) {
+      // cliente desconectado
+    }
+  });
+}
+
+function extractOrders(data) {
+  if (!data) {
+    return [];
+  }
+
+  if (Array.isArray(data)) {
+    return data;
+  }
+
+  if (Array.isArray(data.orders)) {
+    return data.orders;
+  }
+
+  if (Array.isArray(data.data)) {
+    return data.data;
+  }
+
+  if (
+    data.data &&
+    Array.isArray(data.data.orders)
+  ) {
+    return data.data.orders;
+  }
+
+  if (Array.isArray(data.results)) {
+    return data.results;
+  }
+
+  return [];
+}
+
+async function requestOrders(
+  updatedSince = null,
+  page = 1
+) {
+  if (!API_KEY) {
+    throw new Error(
+      "CARDAPIO_API_KEY não configurada"
+    );
+  }
+
+  const url =
+    new URL(
+      "https://integracao.cardapioweb.com/api/partner/v1/orders"
+    );
+
+  url.searchParams.set(
+    "page",
+    String(page)
   );
 
-  res
-    .status(500)
-    .json({
-      error:
-        "Erro interno"
+  if (updatedSince) {
+    url.searchParams.set(
+      "updated_since",
+      updatedSince
+    );
+  }
+
+  const response =
+    await fetch(url, {
+      method: "GET",
+      headers: {
+        "X-API-KEY": API_KEY,
+        "Accept": "application/json"
+      }
     });
 
+  const text =
+    await response.text();
+
+  if (!response.ok) {
+    throw new Error(
+      `Cardápio Web ${response.status}: ${text}`
+    );
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error(
+      "Resposta inválida da API Cardápio Web"
+    );
+  }
 }
-```
 
+async function syncOrders() {
+  try {
+    console.log(
+      "Consultando pedidos no Cardápio Web..."
+    );
+
+    const updatedSince =
+      new Date(
+        Date.now() - 8 * 60 * 60 * 1000
+      ).toISOString();
+
+    let totalRecebidos = 0;
+    let novos = 0;
+    let atualizados = 0;
+
+    for (let page = 1; page <= 10; page++) {
+      let data;
+
+      try {
+        data =
+          await requestOrders(
+            updatedSince,
+            page
+          );
+      } catch (error) {
+        console.error(
+          "Erro na página",
+          page,
+          ":",
+          error.message
+        );
+
+        break;
+      }
+
+      const pedidos =
+        extractOrders(data);
+
+      console.log(
+        `Página ${page}: ${pedidos.length} pedidos`
+      );
+
+      if (!pedidos.length) {
+        break;
+      }
+
+      totalRecebidos += pedidos.length;
+
+      for (const pedido of pedidos) {
+        const id =
+          pedido.id ||
+          pedido.order_id ||
+          pedido.code;
+
+        if (!id) continue;
+
+        const existia =
+          Boolean(orders[id]);
+
+        const order =
+          saveOrder(pedido);
+
+        if (existia) {
+          atualizados++;
+        } else {
+          novos++;
+        }
+
+        const status =
+          pedido.status;
+
+        const evento =
+          pedido.updated_at ||
+          pedido.created_at ||
+          new Date().toISOString();
+
+        if (
+          status === "ready" ||
+          status === "waiting_to_catch"
+        ) {
+          registerReady(
+            order,
+            evento
+          );
+        }
+
+        if (
+          status === "released" ||
+          status === "out_for_delivery"
+        ) {
+          registerReleased(
+            order,
+            evento
+          );
+        }
+
+        if (
+          status === "delivered" ||
+          status === "closed"
+        ) {
+          registerDelivered(
+            order,
+            evento
+          );
+        }
+      }
+
+      if (
+        pedidos.length < 100
+      ) {
+        break;
+      }
+    }
+
+    saveData();
+
+    console.log(
+      "Pedidos recebidos pela API:",
+      totalRecebidos
+    );
+
+    console.log(
+      "Novos pedidos:",
+      novos
+    );
+
+    console.log(
+      "Pedidos atualizados:",
+      atualizados
+    );
+
+    console.log(
+      "TOTAL DE PEDIDOS HOJE:",
+      getTotalToday()
+    );
+
+    console.log(
+      "TEMPO MÉDIO DE PREPARO:",
+      getAveragePrepTime(),
+      "min"
+    );
+
+    console.log(
+      "TEMPO MÉDIO DE ENTREGA:",
+      getAverageDeliveryTime(),
+      "min"
+    );
+
+    broadcast();
+
+  } catch (error) {
+    console.error(
+      "Erro ao sincronizar pedidos:",
+      error.message
+    );
+  }
 }
-);
 
-/* =========================
-SSE
-========================= */
+app.post(
+  "/webhook/cardapioweb",
+  (req, res) => {
+    try {
+      const event =
+        req.body;
 
-app.get(
-"/events",
-(req, res) => {
+      console.log(
+        "Webhook recebido:",
+        JSON.stringify(event)
+      );
 
-```
-res.setHeader(
-  "Content-Type",
-  "text/event-stream"
-);
+      if (
+        String(event.merchant_id) !==
+        String(MERCHANT_ID)
+      ) {
+        console.log(
+          "Webhook ignorado: merchant_id diferente"
+        );
 
-res.setHeader(
-  "Cache-Control",
-  "no-cache"
-);
+        return res
+          .status(200)
+          .json({
+            ok: true,
+            ignored: true
+          });
+      }
 
-res.setHeader(
-  "Connection",
-  "keep-alive"
-);
+      const orderId =
+        event.order_id;
 
-res.flushHeaders();
+      if (!orderId) {
+        return res
+          .status(200)
+          .json({
+            ok: true
+          });
+      }
 
-clients.add(res);
+      const status =
+        event.order_status;
 
-const message =
-  "data: " +
-  JSON.stringify(
-    dashboardData()
-  ) +
-  "\n\n";
+      const eventTime =
+        event.created_at ||
+        new Date().toISOString();
 
-res.write(message);
+      let order =
+        orders[orderId];
 
-req.on(
-  "close",
-  () => {
-    clients.delete(res);
+      if (!order) {
+        order = saveOrder({
+          id: orderId,
+          status: status,
+          created_at: eventTime
+        });
+      } else {
+        order.status = status;
+      }
+
+      if (
+        status === "ready" ||
+        status === "waiting_to_catch"
+      ) {
+        registerReady(
+          order,
+          eventTime
+        );
+      }
+
+      if (
+        status === "released" ||
+        status === "out_for_delivery"
+      ) {
+        registerReleased(
+          order,
+          eventTime
+        );
+      }
+
+      if (
+        status === "delivered" ||
+        status === "closed"
+      ) {
+        registerDelivered(
+          order,
+          eventTime
+        );
+      }
+
+      saveData();
+
+      broadcast();
+
+      return res
+        .status(200)
+        .json({
+          ok: true
+        });
+
+    } catch (error) {
+      console.error(
+        "Erro no webhook:",
+        error.message
+      );
+
+      return res
+        .status(200)
+        .json({
+          ok: true
+        });
+    }
   }
 );
-```
-
-}
-);
-
-/* =========================
-API DASHBOARD
-========================= */
 
 app.get(
-"/api/dashboard",
-(req, res) => {
+  "/events",
+  (req, res) => {
+    res.setHeader(
+      "Content-Type",
+      "text/event-stream"
+    );
 
-```
-res.json(
-  dashboardData()
+    res.setHeader(
+      "Cache-Control",
+      "no-cache"
+    );
+
+    res.setHeader(
+      "Connection",
+      "keep-alive"
+    );
+
+    res.flushHeaders();
+
+    res.write(
+      `data: ${JSON.stringify(
+        dashboardData()
+      )}\n\n`
+    );
+
+    clients.push(res);
+
+    req.on(
+      "close",
+      () => {
+        clients =
+          clients.filter(
+            (client) =>
+              client !== res
+          );
+      }
+    );
+  }
 );
-```
-
-}
-);
-
-/* =========================
-HEALTH
-========================= */
 
 app.get(
-"/health",
-(req, res) => {
-
-```
-res.json({
-
-  status:
-    "ok",
-
-  total_today:
-    getTotalToday(),
-
-  avg_prep_time:
-    getAveragePrepTime(),
-
-  avg_delivery_time:
-    getAverageDeliveryTime(),
-
-  counters:
-    getCounters(),
-
-  webhook:
-    true,
-
-  api_configurada:
-    !!CARDAPIO_API_KEY,
-
-  pedidos_salvos:
-    Object.keys(
-      orders
-    ).length
-
-});
-```
-
-}
+  "/api/dashboard",
+  (req, res) => {
+    res.json(
+      dashboardData()
+    );
+  }
 );
 
-/* =========================
-SERVIDOR
-========================= */
+app.get(
+  "/health",
+  (req, res) => {
+    res.json({
+      ok: true,
+
+      total_today:
+        getTotalToday(),
+
+      avg_prep_time:
+        getAveragePrepTime(),
+
+      avg_delivery_time:
+        getAverageDeliveryTime(),
+
+      orders:
+        Object.keys(orders).length,
+
+      clients:
+        clients.length,
+
+      time:
+        new Date().toISOString()
+    });
+  }
+);
+
+loadData();
 
 app.listen(
-PORT,
-async () => {
+  PORT,
+  () => {
+    console.log(
+      `Contador rodando na porta ${PORT}`
+    );
 
-```
-console.log(
-  "========================================"
+    console.log(
+      "Pedidos carregados:",
+      Object.keys(orders).length
+    );
+
+    console.log(
+      "Consultando total de pedidos..."
+    );
+
+    syncOrders();
+  }
 );
-
-console.log(
-  "Contador rodando na porta " +
-  PORT
-);
-
-console.log(
-  "API configurada:",
-  !!CARDAPIO_API_KEY
-);
-
-console.log(
-  "========================================"
-);
-
-await syncOrders();
 
 setInterval(
   syncOrders,
   30000
-);
-```
-
-}
 );
