@@ -1,5 +1,4 @@
 <!doctype html>
-
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
@@ -7,183 +6,393 @@
 <title>Pedidos — Dona Feijuca</title>
 
 <style>
-*{box-sizing:border-box}
+*{
+  box-sizing:border-box;
+}
 
 body{
   margin:0;
   font-family:Arial,Helvetica,sans-serif;
-  background:#5a0f1b;
-  color:#fff
+  background:
+    radial-gradient(circle at top right, #7a1d2b 0%, transparent 35%),
+    radial-gradient(circle at bottom left, #3d0710 0%, transparent 40%),
+    #520d18;
+  color:#fff;
+  min-height:100vh;
 }
 
+/* CABEÇALHO */
+
 header{
-  padding:22px 28px;
+  padding:24px 32px 18px;
   display:flex;
   justify-content:space-between;
-  align-items:center
+  align-items:center;
+}
+
+.brand{
+  display:flex;
+  align-items:center;
+  gap:14px;
+}
+
+.logo{
+  width:52px;
+  height:52px;
+  border-radius:15px;
+  background:rgba(255,255,255,.12);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:28px;
+  box-shadow:0 8px 25px rgba(0,0,0,.18);
 }
 
 h1{
   margin:0;
-  font-size:30px
+  font-size:28px;
+  font-weight:800;
+  letter-spacing:-.5px;
+}
+
+.subtitle{
+  margin-top:4px;
+  font-size:13px;
+  opacity:.6;
+}
+
+.right-header{
+  display:flex;
+  align-items:center;
+  gap:24px;
+}
+
+.clock{
+  font-size:25px;
+  font-weight:700;
+  letter-spacing:1px;
 }
 
 .online{
-  font-size:14px;
-  opacity:.75
+  font-size:13px;
+  padding:9px 14px;
+  border-radius:999px;
+  background:rgba(255,255,255,.10);
 }
+
+/* CARDS */
 
 .grid{
   display:grid;
-  grid-template-columns:repeat(4,1fr);
+  grid-template-columns:repeat(3,1fr);
   gap:18px;
-  padding:0 28px 20px
+  padding:10px 32px 24px;
 }
 
 .card{
-  background:#1d1d1d;
-  border-radius:18px;
-  padding:22px;
-  min-height:150px;
+  position:relative;
+  overflow:hidden;
+  background:rgba(20,10,12,.72);
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:20px;
+  padding:22px 24px;
+  min-height:155px;
   display:flex;
   flex-direction:column;
-  justify-content:space-between
+  justify-content:space-between;
+  box-shadow:0 10px 35px rgba(0,0,0,.20);
+  backdrop-filter:blur(8px);
+  transition:.2s;
+}
+
+.card::after{
+  content:"";
+  position:absolute;
+  width:100px;
+  height:100px;
+  right:-35px;
+  bottom:-45px;
+  border-radius:50%;
+  background:currentColor;
+  opacity:.07;
 }
 
 .label{
-  font-size:17px;
-  opacity:.8
+  font-size:16px;
+  font-weight:600;
+  opacity:.75;
 }
 
 .num{
-  font-size:64px;
-  font-weight:800;
-  line-height:1
+  font-size:68px;
+  font-weight:900;
+  line-height:1;
+  margin-top:12px;
 }
 
-.aguardando{border-left:8px solid #f1c40f}
-.preparo{border-left:8px solid #f39c12}
-.prontos{border-left:8px solid #2ecc71}
-.entrega{border-left:8px solid #3498db}
-.entregues{border-left:8px solid #9b59b6}
-.total{border-left:8px solid #ecf0f1}
+/* CORES */
+
+.aguardando{
+  border-top:4px solid #f1c40f;
+}
+
+.preparo{
+  border-top:4px solid #f39c12;
+}
+
+.prontos{
+  border-top:4px solid #2ecc71;
+}
+
+.entrega{
+  border-top:4px solid #3498db;
+}
+
+.entregues{
+  border-top:4px solid #9b59b6;
+}
+
+.total{
+  border-top:4px solid #fff;
+}
+
+/* PAINEL */
 
 section{
-  padding:0 28px 30px
+  padding:0 32px 30px;
 }
 
 .panel{
-  background:#1d1d1d;
-  border-radius:18px;
-  padding:22px
+  background:rgba(20,10,12,.72);
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:20px;
+  padding:22px 24px;
+  box-shadow:0 10px 35px rgba(0,0,0,.20);
+  backdrop-filter:blur(8px);
+}
+
+.panel-title{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:12px;
+}
+
+h2{
+  margin:0;
+  font-size:20px;
+}
+
+.panel-info{
+  font-size:13px;
+  opacity:.5;
 }
 
 table{
   width:100%;
-  border-collapse:collapse
+  border-collapse:collapse;
+}
+
+th{
+  text-transform:uppercase;
+  font-size:11px;
+  letter-spacing:1px;
+  opacity:.45;
 }
 
 th,td{
   text-align:left;
-  padding:12px;
-  border-bottom:1px solid #333
+  padding:13px 10px;
+  border-bottom:1px solid rgba(255,255,255,.07);
+}
+
+td{
+  font-size:14px;
 }
 
 .pill{
   display:inline-block;
-  padding:6px 10px;
+  padding:7px 12px;
   border-radius:999px;
-  background:#333;
-  font-size:13px
+  background:rgba(255,255,255,.10);
+  font-size:12px;
+  font-weight:600;
 }
 
+/* RESPONSIVO */
+
 @media(max-width:900px){
+
   .grid{
-    grid-template-columns:repeat(2,1fr)
+    grid-template-columns:repeat(2,1fr);
   }
+
 }
 
 @media(max-width:550px){
-  .grid{
-    grid-template-columns:1fr
+
+  header{
+    padding:18px;
   }
+
+  .grid{
+    grid-template-columns:1fr;
+    padding:10px 18px 20px;
+  }
+
+  section{
+    padding:0 18px 20px;
+  }
+
+  .clock{
+    display:none;
+  }
+
+  h1{
+    font-size:22px;
+  }
+
+  .num{
+    font-size:60px;
+  }
+
 }
 </style>
-
 </head>
 
 <body>
 
 <header>
-  <h1>🍛 Dona Feijuca — Pedidos</h1>
-  <div class="online" id="conn">Conectando...</div>
+
+  <div class="brand">
+
+    <div class="logo">🍛</div>
+
+    <div>
+      <h1>Dona Feijuca</h1>
+      <div class="subtitle">Painel de pedidos</div>
+    </div>
+
+  </div>
+
+  <div class="right-header">
+
+    <div class="clock" id="clock">00:00</div>
+
+    <div class="online" id="conn">
+      Conectando...
+    </div>
+
+  </div>
+
 </header>
+
 
 <div class="grid">
 
   <div class="card aguardando">
-    <div class="label">Aguardando</div>
+
+    <div class="label">🟡 Aguardando</div>
+
     <div class="num" id="aguardando">0</div>
+
   </div>
+
 
   <div class="card preparo">
-    <div class="label">Em preparo</div>
+
+    <div class="label">🟠 Em preparo</div>
+
     <div class="num" id="em_preparo">0</div>
+
   </div>
+
 
   <div class="card prontos">
-    <div class="label">Prontos</div>
+
+    <div class="label">🟢 Prontos</div>
+
     <div class="num" id="prontos">0</div>
+
   </div>
+
 
   <div class="card entrega">
-    <div class="label">Em entrega</div>
+
+    <div class="label">🔵 Em entrega</div>
+
     <div class="num" id="em_entrega">0</div>
+
   </div>
+
 
   <div class="card entregues">
-    <div class="label">Entregues hoje</div>
+
+    <div class="label">🟣 Entregues hoje</div>
+
     <div class="num" id="entregues">0</div>
+
   </div>
 
+
   <div class="card total">
-    <div class="label">Total de pedidos hoje</div>
+
+    <div class="label">⚪ Total de pedidos hoje</div>
+
     <div class="num" id="total_today">0</div>
+
   </div>
 
 </div>
+
 
 <section>
 
-<div class="panel">
+  <div class="panel">
 
-<h2>Pedidos ativos</h2>
+    <div class="panel-title">
 
-<table>
+      <h2>Pedidos ativos</h2>
 
-<thead>
-<tr>
-  <th>Pedido</th>
-  <th>Status</th>
-  <th>Recebido</th>
-</tr>
-</thead>
+      <div class="panel-info">
+        Atualização em tempo real
+      </div>
 
-<tbody id="orders">
-<tr>
-  <td colspan="3">Aguardando pedidos...</td>
-</tr>
-</tbody>
+    </div>
 
-</table>
+    <table>
 
-</div>
+      <thead>
+
+        <tr>
+          <th>Pedido</th>
+          <th>Status</th>
+          <th>Recebido</th>
+        </tr>
+
+      </thead>
+
+      <tbody id="orders">
+
+        <tr>
+          <td colspan="3">
+            Aguardando pedidos...
+          </td>
+        </tr>
+
+      </tbody>
+
+    </table>
+
+  </div>
 
 </section>
+
 
 <script>
 
 const labels = {
+
   waiting_confirmation: "Aguardando",
   pending_payment: "Aguardando",
   pending_online_payment: "Aguardando",
@@ -195,7 +404,9 @@ const labels = {
   waiting_to_catch: "Pronto",
 
   released: "Em entrega"
+
 };
+
 
 function age(iso){
 
@@ -209,7 +420,9 @@ function age(iso){
   );
 
   return m < 1 ? "agora" : `${m} min`;
+
 }
+
 
 function render(data){
 
@@ -233,12 +446,10 @@ function render(data){
   document.getElementById("total_today").textContent =
     data.total_today || 0;
 
-  const tbody = document.getElementById("orders");
 
-  /*
-   * O servidor atual não envia active_orders.
-   * Portanto, por enquanto mostramos apenas os contadores.
-   */
+  const tbody =
+    document.getElementById("orders");
+
 
   if(!data.active_orders){
 
@@ -246,7 +457,9 @@ function render(data){
       '<tr><td colspan="3">Pedidos sendo contabilizados...</td></tr>';
 
     return;
+
   }
+
 
   if(!data.active_orders.length){
 
@@ -254,45 +467,66 @@ function render(data){
       '<tr><td colspan="3">Nenhum pedido ativo.</td></tr>';
 
     return;
+
   }
 
-  tbody.innerHTML = data.active_orders.map(o => `
 
-    <tr>
+  tbody.innerHTML =
+    data.active_orders.map(o => `
 
-      <td>
-        <strong>#${o.display_id || o.id}</strong>
-      </td>
+      <tr>
 
-      <td>
-        <span class="pill">
-          ${labels[o.status] || o.status}
-        </span>
-      </td>
+        <td>
+          <strong>#${o.display_id || o.id}</strong>
+        </td>
 
-      <td>
-        ${age(o.created_at)}
-      </td>
+        <td>
 
-    </tr>
+          <span class="pill">
+            ${labels[o.status] || o.status}
+          </span>
 
-  `).join("");
+        </td>
+
+        <td>
+          ${age(o.created_at)}
+        </td>
+
+      </tr>
+
+    `).join("");
 
 }
 
 
-/* =========================
-   INICIALIZAÇÃO
-========================= */
+/* RELÓGIO */
+
+function updateClock(){
+
+  const now = new Date();
+
+  const time =
+    now.toLocaleTimeString("pt-BR", {
+      hour:"2-digit",
+      minute:"2-digit"
+    });
+
+  document.getElementById("clock").textContent =
+    time;
+
+}
+
+updateClock();
+
+setInterval(updateClock,1000);
+
+
+/* INICIALIZAÇÃO */
 
 async function boot(){
 
   try{
 
-    /*
-     * CORREÇÃO:
-     * O servidor possui /api/dashboard
-     */
     const response =
       await fetch("/api/dashboard");
 
@@ -311,10 +545,6 @@ async function boot(){
   }
 
 
-  /*
-   * CORREÇÃO:
-   * O servidor possui /events
-   */
   const es =
     new EventSource("/events");
 
@@ -322,7 +552,7 @@ async function boot(){
   es.onopen = () => {
 
     document.getElementById("conn").textContent =
-      "● Online — atualiza em tempo real";
+      "● Online — tempo real";
 
   };
 
