@@ -1,4 +1,3 @@
-
 const express = require("express");
 const fs = require("fs");
 const path = require("path");
@@ -116,6 +115,16 @@ function saveOrder(pedido) {
   const id = String(pedido.id);
   const existente = orders[id] || {};
 
+  /*
+    IMPORTANTE:
+
+    Se o pedido já tiver um ready_at,
+    nunca sobrescrevemos.
+
+    Isso evita perder o horário original
+    em sincronizações futuras.
+  */
+
   orders[id] = {
     ...existente,
     ...pedido,
@@ -133,10 +142,148 @@ function saveOrder(pedido) {
     updated_at:
       pedido.updated_at ||
       existente.updated_at ||
-      new Date().toISOString()
+      new Date().toISOString(),
+
+    ready_at:
+      existente.ready_at ||
+      pedido.ready_at ||
+      null
   };
 
   return !existente.id;
+}
+
+/* =========================
+   REGISTRAR PEDIDO PRONTO
+========================= */
+
+function registerReady(order, eventCreatedAt) {
+
+  if (!order || !order.created_at) {
+    return;
+  }
+
+  /*
+    Só registra a primeira vez
+    que o pedido fica pronto.
+  */
+
+  if (order.ready_at) {
+    return;
+  }
+
+  const readyAt =
+    eventCreatedAt ||
+    new Date().toISOString();
+
+  const inicio =
+    new Date(order.created_at).getTime();
+
+  const fim =
+    new Date(readyAt).getTime();
+
+  if (
+    !Number.isFinite(inicio) ||
+    !Number.isFinite(fim) ||
+    fim <= inicio
+  ) {
+    return;
+  }
+
+  const minutos =
+    (fim - inicio) / 60000;
+
+  /*
+    Ignora valores absurdos.
+    Exemplo: pedido criado há 10 dias
+    e marcado como pronto hoje.
+  */
+
+  if (minutos < 0 || minutos > 180) {
+    console.log(
+      "Tempo de preparo ignorado:",
+      minutos,
+      "minutos"
+    );
+
+    return;
+  }
+
+  order.ready_at = readyAt;
+
+  order.prep_time_minutes =
+    Number(
+      minutos.toFixed(2)
+    );
+
+  console.log(
+    "TEMPO DE PREPARO REGISTRADO:",
+    order.id,
+    "=>",
+    order.prep_time_minutes,
+    "min"
+  );
+}
+
+/* =========================
+   TEMPO MÉDIO DE PREPARO
+========================= */
+
+function getAveragePrepTime() {
+
+  const hoje =
+    getTodayString();
+
+  const tempos = [];
+
+  for (const id in orders) {
+
+    const order =
+      orders[id];
+
+    if (
+      !order ||
+      !order.created_at ||
+      !order.ready_at
+    ) {
+      continue;
+    }
+
+    if (!isToday(order.created_at)) {
+      continue;
+    }
+
+    const tempo =
+      Number(
+        order.prep_time_minutes
+      );
+
+    if (
+      Number.isFinite(tempo) &&
+      tempo >= 0 &&
+      tempo <= 180
+    ) {
+      tempos.push(tempo);
+    }
+  }
+
+  if (!tempos.length) {
+    return 0;
+  }
+
+  const soma =
+    tempos.reduce(
+      (total, tempo) =>
+        total + tempo,
+      0
+    );
+
+  const media =
+    soma / tempos.length;
+
+  return Number(
+    media.toFixed(1)
+  );
 }
 
 /* =========================
@@ -144,6 +291,7 @@ function saveOrder(pedido) {
 ========================= */
 
 function getCounters() {
+
   const counters = {
     aguardando: 0,
     em_preparo: 0,
@@ -153,27 +301,38 @@ function getCounters() {
     cancelados: 0
   };
 
-  const hoje = getTodayString();
+  const hoje =
+    getTodayString();
 
   for (const id in orders) {
-    const order = orders[id];
 
-    if (!order || !order.created_at) {
+    const order =
+      orders[id];
+
+    if (
+      !order ||
+      !order.created_at
+    ) {
       continue;
     }
 
     let dataPedido;
 
     try {
+
       dataPedido =
         new Intl.DateTimeFormat(
           "en-CA",
           {
-            timeZone: "America/Sao_Paulo"
+            timeZone:
+              "America/Sao_Paulo"
           }
         ).format(
-          new Date(order.created_at)
+          new Date(
+            order.created_at
+          )
         );
+
     } catch (error) {
       continue;
     }
@@ -232,25 +391,37 @@ function getCounters() {
 ========================= */
 
 function getTotalToday() {
-  const hoje = getTodayString();
+
+  const hoje =
+    getTodayString();
+
   let total = 0;
 
   for (const id in orders) {
-    const order = orders[id];
 
-    if (!order || !order.created_at) {
+    const order =
+      orders[id];
+
+    if (
+      !order ||
+      !order.created_at
+    ) {
       continue;
     }
 
     try {
+
       const dataPedido =
         new Intl.DateTimeFormat(
           "en-CA",
           {
-            timeZone: "America/Sao_Paulo"
+            timeZone:
+              "America/Sao_Paulo"
           }
         ).format(
-          new Date(order.created_at)
+          new Date(
+            order.created_at
+          )
         );
 
       if (dataPedido === hoje) {
@@ -266,13 +437,82 @@ function getTotalToday() {
 }
 
 /* =========================
+   PEDIDOS ATIVOS
+========================= */
+
+function getActiveOrders() {
+
+  const hoje =
+    getTodayString();
+
+  const ativos = [];
+
+  for (const id in orders) {
+
+    const order =
+      orders[id];
+
+    if (
+      !order ||
+      !order.created_at
+    ) {
+      continue;
+    }
+
+    if (!isToday(order.created_at)) {
+      continue;
+    }
+
+    /*
+      Não mostrar pedidos encerrados
+      ou cancelados na lista ativa.
+    */
+
+    if (
+      order.status === "closed" ||
+      order.status === "delivered" ||
+      order.status === "canceled" ||
+      order.status === "canceling"
+    ) {
+      continue;
+    }
+
+    ativos.push(order);
+  }
+
+  /*
+    Mais recentes primeiro
+  */
+
+  ativos.sort(
+    (a, b) =>
+      new Date(b.created_at) -
+      new Date(a.created_at)
+  );
+
+  return ativos;
+}
+
+/* =========================
    DASHBOARD
 ========================= */
 
 function dashboardData() {
+
   return {
-    total_today: getTotalToday(),
-    counters: getCounters()
+
+    total_today:
+      getTotalToday(),
+
+    counters:
+      getCounters(),
+
+    avg_prep_time:
+      getAveragePrepTime(),
+
+    active_orders:
+      getActiveOrders()
+
   };
 }
 
@@ -281,6 +521,7 @@ function dashboardData() {
 ========================= */
 
 function broadcast() {
+
   const message =
     "data: " +
     JSON.stringify(
@@ -289,10 +530,15 @@ function broadcast() {
     "\n\n";
 
   for (const res of clients) {
+
     try {
+
       res.write(message);
+
     } catch (error) {
+
       clients.delete(res);
+
     }
   }
 }
@@ -302,6 +548,7 @@ function broadcast() {
 ========================= */
 
 function extractOrders(data) {
+
   if (!data) {
     return [];
   }
@@ -340,20 +587,23 @@ function extractOrders(data) {
 ========================= */
 
 async function requestOrders(url) {
-  const response = await fetch(
-    url,
-    {
-      method: "GET",
 
-      headers: {
-        "X-API-KEY":
-          CARDAPIO_API_KEY,
+  const response =
+    await fetch(
+      url,
+      {
+        method: "GET",
 
-        "Accept":
-          "application/json"
+        headers: {
+
+          "X-API-KEY":
+            CARDAPIO_API_KEY,
+
+          "Accept":
+            "application/json"
+        }
       }
-    }
-  );
+    );
 
   const text =
     await response.text();
@@ -376,6 +626,7 @@ async function requestOrders(url) {
 async function syncOrders() {
 
   if (!CARDAPIO_API_KEY) {
+
     console.error(
       "ERRO: CARDAPIO_API_KEY não configurada."
     );
@@ -393,7 +644,8 @@ async function syncOrders() {
       "Consultando pedidos no Cardápio Web..."
     );
 
-    const agora = new Date();
+    const agora =
+      new Date();
 
     const oitoHorasAtras =
       new Date(
@@ -436,7 +688,9 @@ async function syncOrders() {
       );
 
       const result =
-        await requestOrders(url);
+        await requestOrders(
+          url
+        );
 
       const response =
         result.response;
@@ -463,7 +717,10 @@ async function syncOrders() {
       let data;
 
       try {
-        data = JSON.parse(text);
+
+        data =
+          JSON.parse(text);
+
       } catch (error) {
 
         console.error(
@@ -475,14 +732,6 @@ async function syncOrders() {
         return;
       }
 
-      console.log(
-        "Resposta recebida:"
-      );
-
-      console.log(
-        JSON.stringify(data)
-      );
-
       const pedidos =
         extractOrders(data);
 
@@ -493,7 +742,9 @@ async function syncOrders() {
         pedidos.length
       );
 
-      if (pedidos.length === 0) {
+      if (
+        pedidos.length === 0
+      ) {
         break;
       }
 
@@ -504,12 +755,38 @@ async function syncOrders() {
         const pedido of pedidos
       ) {
 
-        if (!pedido || !pedido.id) {
+        if (
+          !pedido ||
+          !pedido.id
+        ) {
           continue;
         }
 
         const novo =
           saveOrder(pedido);
+
+        /*
+          Se a API já devolver o pedido
+          como pronto, também registramos.
+        */
+
+        if (
+          pedido.status === "ready" ||
+          pedido.status === "waiting_to_catch"
+        ) {
+
+          const order =
+            orders[
+              String(pedido.id)
+            ];
+
+          registerReady(
+            order,
+            pedido.updated_at ||
+            pedido.created_at ||
+            new Date().toISOString()
+          );
+        }
 
         if (novo) {
           totalNovos++;
@@ -518,7 +795,9 @@ async function syncOrders() {
         }
       }
 
-      if (pedidos.length < 100) {
+      if (
+        pedidos.length < 100
+      ) {
         break;
       }
     }
@@ -546,6 +825,12 @@ async function syncOrders() {
     );
 
     console.log(
+      "TEMPO MÉDIO DE PREPARO:",
+      getAveragePrepTime(),
+      "min"
+    );
+
+    console.log(
       "CONTADORES:",
       JSON.stringify(
         getCounters()
@@ -560,6 +845,7 @@ async function syncOrders() {
       "Erro ao consultar /orders:",
       error.message
     );
+
   }
 }
 
@@ -581,7 +867,9 @@ app.post(
         JSON.stringify(event)
       );
 
-      if (!event.order_id) {
+      if (
+        !event.order_id
+      ) {
 
         return res
           .status(400)
@@ -589,10 +877,13 @@ app.post(
             error:
               "order_id não informado"
           });
+
       }
 
       const id =
-        String(event.order_id);
+        String(
+          event.order_id
+        );
 
       const existente =
         orders[id] || {};
@@ -617,8 +908,37 @@ app.post(
           event.created_at,
 
         updated_at:
-          new Date().toISOString()
+          new Date().toISOString(),
+
+        ready_at:
+          existente.ready_at ||
+          null,
+
+        prep_time_minutes:
+          existente.prep_time_minutes ||
+          null
+
       };
+
+      /*
+        Quando o Cardápio Web mandar
+        o pedido como PRONTO,
+        calculamos:
+
+        created_at → momento do webhook
+      */
+
+      if (
+        event.order_status === "ready" ||
+        event.order_status === "waiting_to_catch"
+      ) {
+
+        registerReady(
+          orders[id],
+          event.created_at
+        );
+
+      }
 
       saveData();
 
@@ -630,6 +950,25 @@ app.post(
       console.log(
         "Status:",
         orders[id].status
+      );
+
+      if (
+        orders[id].prep_time_minutes
+      ) {
+
+        console.log(
+          "Tempo deste pedido:",
+          orders[id]
+            .prep_time_minutes,
+          "min"
+        );
+
+      }
+
+      console.log(
+        "TEMPO MÉDIO DE PREPARO:",
+        getAveragePrepTime(),
+        "min"
       );
 
       console.log(
@@ -656,6 +995,7 @@ app.post(
           error:
             "Erro interno"
         });
+
     }
   }
 );
@@ -735,6 +1075,9 @@ app.get(
       total_today:
         getTotalToday(),
 
+      avg_prep_time:
+        getAveragePrepTime(),
+
       counters:
         getCounters(),
 
@@ -748,6 +1091,7 @@ app.get(
         Object.keys(
           orders
         ).length
+
     });
   }
 );
@@ -784,6 +1128,6 @@ app.listen(
       syncOrders,
       30000
     );
+
   }
 );
-
