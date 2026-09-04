@@ -1,4 +1,5 @@
 <!doctype html>
+
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
@@ -222,6 +223,10 @@ h1{
     text-shadow .4s ease;
 }
 
+/* =========================================
+   TEMPO NORMAL — ATÉ 10 MINUTOS
+========================================= */
+
 .prep-time.ok{
   border-color:rgba(101,255,0,.35);
   box-shadow:
@@ -229,18 +234,50 @@ h1{
     inset 0 0 30px rgba(101,255,0,.025);
 }
 
+.prep-time.ok .prep-time-number{
+  color:#65ff00;
+  text-shadow:
+    0 0 12px rgba(100,255,0,.45),
+    0 0 30px rgba(100,255,0,.18);
+}
+
+/* =========================================
+   TEMPO ESTOURADO — MAIS DE 10 MINUTOS
+========================================= */
+
 .prep-time.late{
-  border-color:rgba(255,50,50,.5);
+  border-color:#ff2020;
   box-shadow:
-    0 0 30px rgba(255,40,40,.14),
-    inset 0 0 30px rgba(255,40,40,.035);
+    0 0 30px rgba(255,40,40,.35),
+    inset 0 0 30px rgba(255,40,40,.08);
+  animation:prepAlert .8s infinite;
 }
 
 .prep-time.late .prep-time-number{
   color:#ff3030;
   text-shadow:
-    0 0 12px rgba(255,50,50,.7),
-    0 0 30px rgba(255,30,30,.3);
+    0 0 12px rgba(255,50,50,.8),
+    0 0 30px rgba(255,30,30,.45);
+}
+
+/* PISCADA DO ALERTA */
+
+@keyframes prepAlert{
+
+  0%,100%{
+    opacity:1;
+    box-shadow:
+      0 0 30px rgba(255,40,40,.35),
+      inset 0 0 30px rgba(255,40,40,.08);
+  }
+
+  50%{
+    opacity:.45;
+    box-shadow:
+      0 0 55px rgba(255,0,0,.75),
+      inset 0 0 45px rgba(255,0,0,.15);
+  }
+
 }
 
 /* =========================================
@@ -739,6 +776,7 @@ td{
 }
 
 </style>
+
 </head>
 
 <body>
@@ -759,273 +797,255 @@ td{
 
   <div class="header-bottom">
 
-    <div class="clock" id="clock">
-      00:00
-    </div>
+```
+<div class="clock" id="clock">
+  00:00
+</div>
 
-    <div class="online" id="conn">
-      ● Conectando...
-    </div>
+<div class="online" id="conn">
+  ● Conectando...
+</div>
+```
 
   </div>
 
 </header>
 
-
-<!-- =========================================
-     RESUMO
-========================================= -->
-
 <div class="summary">
-
-  <!-- TOTAL DE PEDIDOS -->
 
   <div class="summary-card">
 
-    <div>
+```
+<div>
 
-      <div class="summary-title">
-        Total de pedidos hoje
-      </div>
-
-      <div class="summary-number" id="total_today">
-        0
-      </div>
-
-    </div>
-
-    <div class="summary-icon">
-      🍽️
-    </div>
-
+  <div class="summary-title">
+    Total de pedidos hoje
   </div>
 
+  <div class="summary-number" id="total_today">
+    0
+  </div>
 
-  <!-- TEMPO MÉDIO -->
+</div>
+
+<div class="summary-icon">
+  🍽️
+</div>
+```
+
+  </div>
 
   <div class="summary-card prep-time ok" id="prep_time_card">
 
-    <div class="summary-title">
-      Tempo médio de preparo
-    </div>
+```
+<div class="summary-title">
+  Tempo médio de preparo
+</div>
 
-    <div class="prep-time-number" id="prep_time">
-      0 min
-    </div>
+<div class="prep-time-number" id="prep_time">
+  0 min
+</div>
+```
 
   </div>
-
-
-  <!-- ENTREGUES -->
 
   <div class="summary-card">
 
-    <div>
+```
+<div>
 
-      <div class="summary-title">
-        Entregues hoje
-      </div>
+  <div class="summary-title">
+    Entregues hoje
+  </div>
 
-      <div class="summary-number" id="entregues">
-        0
-      </div>
-
-    </div>
-
-    <div class="summary-icon">
-      ✓
-    </div>
-
+  <div class="summary-number" id="entregues">
+    0
   </div>
 
 </div>
 
+<div class="summary-icon">
+  ✓
+</div>
+```
 
-<!-- =========================================
-     KANBAN
-========================================= -->
+  </div>
+
+</div>
 
 <div class="kanban">
 
-
-  <!-- AGUARDANDO -->
-
   <div class="column waiting">
 
-    <div class="column-head">
+```
+<div class="column-head">
 
-      <div class="column-title">
-        <span class="dot"></span>
-        AGUARDANDO
-      </div>
-
-      <div class="column-count" id="aguardando">
-        0
-      </div>
-
-    </div>
-
-    <div class="counter-button">
-
-      <div class="counter-number" id="aguardando_big">
-        0
-      </div>
-
-      <div class="counter-label">
-        pedidos aguardando
-      </div>
-
-    </div>
-
+  <div class="column-title">
+    <span class="dot"></span>
+    AGUARDANDO
   </div>
 
-
-  <!-- EM PREPARO -->
-
-  <div class="column preparing">
-
-    <div class="column-head">
-
-      <div class="column-title">
-        <span class="dot"></span>
-        EM PREPARO
-      </div>
-
-      <div class="column-count" id="em_preparo">
-        0
-      </div>
-
-    </div>
-
-    <div class="counter-button">
-
-      <div class="counter-number" id="em_preparo_big">
-        0
-      </div>
-
-      <div class="counter-label">
-        pedidos na cozinha
-      </div>
-
-    </div>
-
-  </div>
-
-
-  <!-- PRONTOS -->
-
-  <div class="column ready">
-
-    <div class="column-head">
-
-      <div class="column-title">
-        <span class="dot"></span>
-        PRONTOS
-      </div>
-
-      <div class="column-count" id="prontos">
-        0
-      </div>
-
-    </div>
-
-    <div class="counter-button">
-
-      <div class="counter-number" id="prontos_big">
-        0
-      </div>
-
-      <div class="counter-label">
-        aguardando retirada
-      </div>
-
-    </div>
-
-  </div>
-
-
-  <!-- EM ENTREGA -->
-
-  <div class="column delivery">
-
-    <div class="column-head">
-
-      <div class="column-title">
-        <span class="dot"></span>
-        EM ENTREGA
-      </div>
-
-      <div class="column-count" id="em_entrega">
-        0
-      </div>
-
-    </div>
-
-    <div class="counter-button">
-
-      <div class="counter-number" id="em_entrega_big">
-        0
-      </div>
-
-      <div class="counter-label">
-        pedidos com motoboy
-      </div>
-
-    </div>
-
+  <div class="column-count" id="aguardando">
+    0
   </div>
 
 </div>
 
+<div class="counter-button">
 
-<!-- =========================================
-     PEDIDOS ATIVOS
-========================================= -->
+  <div class="counter-number" id="aguardando_big">
+    0
+  </div>
+
+  <div class="counter-label">
+    pedidos aguardando
+  </div>
+
+</div>
+```
+
+  </div>
+
+  <div class="column preparing">
+
+```
+<div class="column-head">
+
+  <div class="column-title">
+    <span class="dot"></span>
+    EM PREPARO
+  </div>
+
+  <div class="column-count" id="em_preparo">
+    0
+  </div>
+
+</div>
+
+<div class="counter-button">
+
+  <div class="counter-number" id="em_preparo_big">
+    0
+  </div>
+
+  <div class="counter-label">
+    pedidos na cozinha
+  </div>
+
+</div>
+```
+
+  </div>
+
+  <div class="column ready">
+
+```
+<div class="column-head">
+
+  <div class="column-title">
+    <span class="dot"></span>
+    PRONTOS
+  </div>
+
+  <div class="column-count" id="prontos">
+    0
+  </div>
+
+</div>
+
+<div class="counter-button">
+
+  <div class="counter-number" id="prontos_big">
+    0
+  </div>
+
+  <div class="counter-label">
+    aguardando retirada
+  </div>
+
+</div>
+```
+
+  </div>
+
+  <div class="column delivery">
+
+```
+<div class="column-head">
+
+  <div class="column-title">
+    <span class="dot"></span>
+    EM ENTREGA
+  </div>
+
+  <div class="column-count" id="em_entrega">
+    0
+  </div>
+
+</div>
+
+<div class="counter-button">
+
+  <div class="counter-number" id="em_entrega_big">
+    0
+  </div>
+
+  <div class="counter-label">
+    pedidos com motoboy
+  </div>
+
+</div>
+```
+
+  </div>
+
+</div>
 
 <section>
 
   <div class="panel">
 
-    <div class="panel-title">
+```
+<div class="panel-title">
 
-      <h2>
-        Pedidos ativos
-      </h2>
+  <h2>
+    Pedidos ativos
+  </h2>
 
-      <div class="panel-info">
-        Atualização em tempo real
-      </div>
+  <div class="panel-info">
+    Atualização em tempo real
+  </div>
 
-    </div>
+</div>
 
-    <table>
+<table>
 
-      <thead>
+  <thead>
 
-        <tr>
-          <th>Pedido</th>
-          <th>Status</th>
-          <th>Recebido</th>
-        </tr>
+    <tr>
+      <th>Pedido</th>
+      <th>Status</th>
+      <th>Recebido</th>
+    </tr>
 
-      </thead>
+  </thead>
 
-      <tbody id="orders">
+  <tbody id="orders">
 
-        <tr>
-          <td colspan="3">
-            Aguardando pedidos...
-          </td>
-        </tr>
+    <tr>
+      <td colspan="3">
+        Aguardando pedidos...
+      </td>
+    </tr>
 
-      </tbody>
+  </tbody>
 
-    </table>
+</table>
+```
 
   </div>
 
 </section>
-
 
 <script>
 
@@ -1069,7 +1089,9 @@ function age(iso){
 
 
 /* =========================================
-   ATUALIZA TEMPO MÉDIO VISUAL
+   TEMPO MÉDIO DE PREPARO
+   ATÉ 10 = VERDE
+   ACIMA DE 10 = VERMELHO PISCANDO
 ========================================= */
 
 function updatePrepTime(minutes){
@@ -1080,18 +1102,17 @@ function updatePrepTime(minutes){
   const display =
     document.getElementById("prep_time");
 
+  if(!card || !display) return;
+
   const value =
     Number(minutes) || 0;
 
-
   display.textContent =
-    `${value} min`;
-
+    `${value.toFixed(1)} min`;
 
   card.classList.remove("ok","late");
 
-
-  if(value <= 5){
+  if(value <= 10){
 
     card.classList.add("ok");
 
@@ -1162,12 +1183,6 @@ function render(data){
   document.getElementById("total_today").textContent =
     data.total_today || 0;
 
-
-  /*
-    Por enquanto o valor é visual.
-    Quando o backend começar a enviar
-    data.avg_prep_time, ele será usado.
-  */
 
   updatePrepTime(
     data.avg_prep_time || 0
@@ -1331,3 +1346,9 @@ boot();
 
 </body>
 </html>
+```
+
+Agora ficou **10 minutos cravado como limite**. O card só entra no vermelho/piscando quando o resultado for **maior que 10**.
+
+Se aparecer **10,0 min → verde**.
+**10,1 min → vermelho piscando.** 🔴
