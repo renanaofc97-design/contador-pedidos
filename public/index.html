@@ -120,16 +120,16 @@ h1{
 
 .summary{
   display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:18px;
+  grid-template-columns:1fr 1.25fr 1fr;
+  gap:14px;
   padding:18px 42px 25px;
 }
 
 .summary-card{
   position:relative;
-  min-height:115px;
-  padding:20px 26px;
-  border-radius:18px;
+  min-height:95px;
+  padding:16px 22px;
+  border-radius:16px;
   background:#0b0b0b;
   border:1px solid #1d1d1d;
   display:flex;
@@ -172,22 +172,75 @@ h1{
 
 .summary-number{
   margin-top:5px;
-  font-size:62px;
+  font-size:50px;
   line-height:1;
   font-weight:900;
-  letter-spacing:-4px;
+  letter-spacing:-3px;
 }
 
 .summary-icon{
-  width:65px;
-  height:65px;
-  border-radius:16px;
+  width:55px;
+  height:55px;
+  border-radius:14px;
   display:flex;
   align-items:center;
   justify-content:center;
-  font-size:29px;
+  font-size:25px;
   background:#111;
   border:1px solid #222;
+}
+
+/* =========================================
+   TEMPO MÉDIO DE PREPARO
+========================================= */
+
+.prep-time{
+  justify-content:center;
+  text-align:center;
+  flex-direction:column;
+  transition:
+    background .4s ease,
+    border-color .4s ease,
+    box-shadow .4s ease;
+}
+
+.prep-time .summary-title{
+  margin-bottom:4px;
+}
+
+.prep-time-number{
+  font-size:48px;
+  line-height:1;
+  font-weight:900;
+  letter-spacing:-2px;
+  color:#65ff00;
+  text-shadow:
+    0 0 12px rgba(100,255,0,.45),
+    0 0 30px rgba(100,255,0,.18);
+  transition:
+    color .4s ease,
+    text-shadow .4s ease;
+}
+
+.prep-time.ok{
+  border-color:rgba(101,255,0,.35);
+  box-shadow:
+    0 0 25px rgba(101,255,0,.10),
+    inset 0 0 30px rgba(101,255,0,.025);
+}
+
+.prep-time.late{
+  border-color:rgba(255,50,50,.5);
+  box-shadow:
+    0 0 30px rgba(255,40,40,.14),
+    inset 0 0 30px rgba(255,40,40,.035);
+}
+
+.prep-time.late .prep-time-number{
+  color:#ff3030;
+  text-shadow:
+    0 0 12px rgba(255,50,50,.7),
+    0 0 30px rgba(255,30,30,.3);
 }
 
 /* =========================================
@@ -350,8 +403,6 @@ h1{
   color:#fff;
 }
 
-/* brilho interno */
-
 .counter-button::before{
   content:"";
   position:absolute;
@@ -409,10 +460,8 @@ h1{
 }
 
 /* =========================================
-   STATUS — VISUAL FORTE
+   AGUARDANDO
 ========================================= */
-
-/* AGUARDANDO */
 
 .waiting .counter-button{
   background:
@@ -430,7 +479,9 @@ h1{
     0 8px 30px rgba(0,0,0,.8);
 }
 
-/* EM PREPARO */
+/* =========================================
+   EM PREPARO
+========================================= */
 
 .preparing .counter-button{
   background:
@@ -453,7 +504,9 @@ h1{
   color:#fff;
 }
 
-/* PRONTO */
+/* =========================================
+   PRONTO
+========================================= */
 
 .ready .counter-button{
   background:
@@ -472,7 +525,9 @@ h1{
     0 8px 30px rgba(0,0,0,.55);
 }
 
-/* EM ENTREGA */
+/* =========================================
+   EM ENTREGA
+========================================= */
 
 .delivery .counter-button{
   background:
@@ -595,6 +650,10 @@ td{
     font-size:55px;
   }
 
+  .prep-time-number{
+    font-size:45px;
+  }
+
   .kanban{
     grid-template-columns:1fr;
     padding:0 18px 25px;
@@ -639,15 +698,19 @@ td{
   .summary{
     padding-left:55px;
     padding-right:55px;
-    gap:24px;
+    gap:20px;
   }
 
   .summary-card{
-    min-height:135px;
+    min-height:115px;
   }
 
   .summary-number{
-    font-size:76px;
+    font-size:65px;
+  }
+
+  .prep-time-number{
+    font-size:60px;
   }
 
   .kanban{
@@ -709,7 +772,13 @@ td{
 </header>
 
 
+<!-- =========================================
+     RESUMO
+========================================= -->
+
 <div class="summary">
+
+  <!-- TOTAL DE PEDIDOS -->
 
   <div class="summary-card">
 
@@ -731,6 +800,23 @@ td{
 
   </div>
 
+
+  <!-- TEMPO MÉDIO -->
+
+  <div class="summary-card prep-time ok" id="prep_time_card">
+
+    <div class="summary-title">
+      Tempo médio de preparo
+    </div>
+
+    <div class="prep-time-number" id="prep_time">
+      0 min
+    </div>
+
+  </div>
+
+
+  <!-- ENTREGUES -->
 
   <div class="summary-card">
 
@@ -755,8 +841,14 @@ td{
 </div>
 
 
+<!-- =========================================
+     KANBAN
+========================================= -->
+
 <div class="kanban">
 
+
+  <!-- AGUARDANDO -->
 
   <div class="column waiting">
 
@@ -788,6 +880,8 @@ td{
   </div>
 
 
+  <!-- EM PREPARO -->
+
   <div class="column preparing">
 
     <div class="column-head">
@@ -818,6 +912,8 @@ td{
   </div>
 
 
+  <!-- PRONTOS -->
+
   <div class="column ready">
 
     <div class="column-head">
@@ -847,6 +943,8 @@ td{
 
   </div>
 
+
+  <!-- EM ENTREGA -->
 
   <div class="column delivery">
 
@@ -879,6 +977,10 @@ td{
 
 </div>
 
+
+<!-- =========================================
+     PEDIDOS ATIVOS
+========================================= -->
 
 <section>
 
@@ -944,6 +1046,10 @@ const labels = {
 };
 
 
+/* =========================================
+   TEMPO DESDE O PEDIDO
+========================================= */
+
 function age(iso){
 
   if(!iso) return "-";
@@ -961,6 +1067,46 @@ function age(iso){
 
 }
 
+
+/* =========================================
+   ATUALIZA TEMPO MÉDIO VISUAL
+========================================= */
+
+function updatePrepTime(minutes){
+
+  const card =
+    document.getElementById("prep_time_card");
+
+  const display =
+    document.getElementById("prep_time");
+
+  const value =
+    Number(minutes) || 0;
+
+
+  display.textContent =
+    `${value} min`;
+
+
+  card.classList.remove("ok","late");
+
+
+  if(value <= 5){
+
+    card.classList.add("ok");
+
+  }else{
+
+    card.classList.add("late");
+
+  }
+
+}
+
+
+/* =========================================
+   RENDER
+========================================= */
 
 function render(data){
 
@@ -1017,6 +1163,17 @@ function render(data){
     data.total_today || 0;
 
 
+  /*
+    Por enquanto o valor é visual.
+    Quando o backend começar a enviar
+    data.avg_prep_time, ele será usado.
+  */
+
+  updatePrepTime(
+    data.avg_prep_time || 0
+  );
+
+
   const tbody =
     document.getElementById("orders");
 
@@ -1069,6 +1226,10 @@ function render(data){
 }
 
 
+/* =========================================
+   RELÓGIO
+========================================= */
+
 function updateClock(){
 
   const now =
@@ -1095,6 +1256,10 @@ setInterval(
   1000
 );
 
+
+/* =========================================
+   CONEXÃO
+========================================= */
 
 async function boot(){
 
