@@ -1,0 +1,12 @@
+{
+  "name": "contador-pedidos-cardapio-web",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Painel em tempo real de pedidos da Cardápio Web via webhook.",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
