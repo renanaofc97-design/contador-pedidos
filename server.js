@@ -24,15 +24,11 @@ function getTodayString() {
 }
 
 function isToday(dateString) {
-  if (!dateString) {
-    return false;
-  }
+  if (!dateString) return false;
 
   const data = new Date(dateString);
 
-  if (isNaN(data.getTime())) {
-    return false;
-  }
+  if (isNaN(data.getTime())) return false;
 
   const ano = data.getFullYear();
   const mes = String(data.getMonth() + 1).padStart(2, "0");
@@ -42,9 +38,7 @@ function isToday(dateString) {
 }
 
 function extractOrders(data) {
-  if (!data) {
-    return [];
-  }
+  if (!data) return [];
 
   if (Array.isArray(data)) {
     return data;
@@ -107,113 +101,6 @@ async function consultarPedidos(page = 1) {
 
 /*
 ==================================================
-DIAGNÓSTICO
-==================================================
-*/
-
-let diagnosticoFeito = false;
-
-function mostrarPedidoCompleto(pedido) {
-  if (diagnosticoFeito) {
-    return;
-  }
-
-  diagnosticoFeito = true;
-
-  console.log("");
-  console.log("==================================================");
-  console.log("========== PEDIDO COMPLETO DA API ===============");
-  console.log("==================================================");
-
-  console.log(
-    JSON.stringify(
-      pedido,
-      null,
-      2
-    )
-  );
-
-  console.log("==================================================");
-  console.log("======== CAMPOS IMPORTANTES ENCONTRADOS ==========");
-  console.log("==================================================");
-
-  console.log(
-    "ID:",
-    pedido.id ||
-    pedido.order_id ||
-    pedido.code
-  );
-
-  console.log(
-    "STATUS:",
-    pedido.status
-  );
-
-  console.log(
-    "CREATED_AT:",
-    pedido.created_at
-  );
-
-  console.log(
-    "UPDATED_AT:",
-    pedido.updated_at
-  );
-
-  console.log(
-    "READY_AT:",
-    pedido.ready_at
-  );
-
-  console.log(
-    "RELEASED_AT:",
-    pedido.released_at
-  );
-
-  console.log(
-    "DELIVERED_AT:",
-    pedido.delivered_at
-  );
-
-  console.log(
-    "=================================================="
-  );
-
-  console.log(
-    "PROCURANDO CAMPOS RELACIONADOS A TEMPO / STATUS..."
-  );
-
-  const campos = Object.keys(pedido);
-
-  const relacionados = campos.filter(
-    campo => {
-      const nome = campo.toLowerCase();
-
-      return (
-        nome.includes("time") ||
-        nome.includes("date") ||
-        nome.includes("created") ||
-        nome.includes("updated") ||
-        nome.includes("ready") ||
-        nome.includes("status") ||
-        nome.includes("prepare") ||
-        nome.includes("confirm") ||
-        nome.includes("release") ||
-        nome.includes("deliver") ||
-        nome.includes("event")
-      );
-    }
-  );
-
-  console.log(
-    relacionados
-  );
-
-  console.log("==================================================");
-  console.log("");
-}
-
-/*
-==================================================
 SINCRONIZAÇÃO
 ==================================================
 */
@@ -221,58 +108,32 @@ SINCRONIZAÇÃO
 async function sincronizar() {
   try {
     console.log("");
-    console.log(
-      "Consultando pedidos no Cardápio Web..."
-    );
+    console.log("Consultando pedidos no Cardápio Web...");
 
     let total = 0;
 
-    for (
-      let pagina = 1;
-      pagina <= 10;
-      pagina++
-    ) {
-      const data =
-        await consultarPedidos(
-          pagina
-        );
+    for (let pagina = 1; pagina <= 10; pagina++) {
+      const data = await consultarPedidos(pagina);
 
-      const lista =
-        extractOrders(
-          data
-        );
+      const lista = extractOrders(data);
 
       console.log(
         `Página ${pagina}: ${lista.length} pedidos`
       );
 
-      if (
-        lista.length === 0
-      ) {
+      if (lista.length === 0) {
         break;
       }
 
       total += lista.length;
 
-      /*
-        MOSTRA O PRIMEIRO PEDIDO COMPLETO
-        DA PRIMEIRA CONSULTA.
-      */
-      mostrarPedidoCompleto(
-        lista[0]
-      );
-
-      for (
-        const pedido of lista
-      ) {
+      for (const pedido of lista) {
         const id =
           pedido.id ||
           pedido.order_id ||
           pedido.code;
 
-        if (!id) {
-          continue;
-        }
+        if (!id) continue;
 
         pedidos[id] = {
           ...(pedidos[id] || {}),
@@ -280,9 +141,7 @@ async function sincronizar() {
         };
       }
 
-      if (
-        lista.length < 100
-      ) {
+      if (lista.length < 100) {
         break;
       }
     }
@@ -303,14 +162,10 @@ async function sincronizar() {
 
     console.log(
       "PEDIDOS DE HOJE:",
-      Object.values(pedidos)
-        .filter(
-          pedido =>
-            isToday(
-              pedido.created_at
-            )
-        )
-        .length
+      Object.values(pedidos).filter(
+        pedido =>
+          isToday(pedido.created_at)
+      ).length
     );
 
     console.log(
@@ -334,14 +189,10 @@ DASHBOARD
 */
 
 function getDashboard() {
-  const hoje =
-    Object.values(pedidos)
-      .filter(
-        pedido =>
-          isToday(
-            pedido.created_at
-          )
-      );
+  const hoje = Object.values(pedidos).filter(
+    pedido =>
+      isToday(pedido.created_at)
+  );
 
   const counters = {
     waiting_confirmation: 0,
@@ -354,37 +205,27 @@ function getDashboard() {
     released: 0
   };
 
-  hoje.forEach(
-    pedido => {
-      if (
-        counters[
-          pedido.status
-        ] !== undefined
-      ) {
-        counters[
-          pedido.status
-        ]++;
-      }
+  hoje.forEach(pedido => {
+    if (
+      counters[pedido.status] !== undefined
+    ) {
+      counters[pedido.status]++;
     }
-  );
+  });
 
   return {
-    total_today:
-      hoje.length,
+    total_today: hoje.length,
 
     counters,
 
     avg_prep_time: 0,
 
-    avg_delivery_time: 0,
-
-    active_orders:
-      hoje.filter(
-        pedido =>
-          pedido.status !== "closed" &&
-          pedido.status !== "canceled" &&
-          pedido.status !== "delivered"
-      )
+    active_orders: hoje.filter(
+      pedido =>
+        pedido.status !== "closed" &&
+        pedido.status !== "canceled" &&
+        pedido.status !== "delivered"
+    )
   };
 }
 
@@ -395,62 +236,51 @@ SSE
 */
 
 function broadcast() {
-  const data =
-    JSON.stringify(
-      getDashboard()
-    );
-
-  clientes.forEach(
-    cliente => {
-      try {
-        cliente.write(
-          `data: ${data}\n\n`
-        );
-      } catch (erro) {}
-    }
+  const data = JSON.stringify(
+    getDashboard()
   );
+
+  clientes.forEach(cliente => {
+    try {
+      cliente.write(
+        `data: ${data}\n\n`
+      );
+    } catch (erro) {}
+  });
 }
 
-app.get(
-  "/events",
-  (req, res) => {
-    res.setHeader(
-      "Content-Type",
-      "text/event-stream"
+app.get("/events", (req, res) => {
+  res.setHeader(
+    "Content-Type",
+    "text/event-stream"
+  );
+
+  res.setHeader(
+    "Cache-Control",
+    "no-cache"
+  );
+
+  res.setHeader(
+    "Connection",
+    "keep-alive"
+  );
+
+  res.flushHeaders();
+
+  res.write(
+    `data: ${JSON.stringify(
+      getDashboard()
+    )}\n\n`
+  );
+
+  clientes.push(res);
+
+  req.on("close", () => {
+    clientes = clientes.filter(
+      cliente => cliente !== res
     );
-
-    res.setHeader(
-      "Cache-Control",
-      "no-cache"
-    );
-
-    res.setHeader(
-      "Connection",
-      "keep-alive"
-    );
-
-    res.flushHeaders();
-
-    res.write(
-      `data: ${JSON.stringify(
-        getDashboard()
-      )}\n\n`
-    );
-
-    clientes.push(res);
-
-    req.on(
-      "close",
-      () => {
-        clientes =
-          clientes.filter(
-            cliente =>
-              cliente !== res
-          );
-      }
-    );
-  }
-);
+  });
+});
 
 /*
 ==================================================
@@ -458,14 +288,11 @@ API DASHBOARD
 ==================================================
 */
 
-app.get(
-  "/api/dashboard",
-  (req, res) => {
-    res.json(
-      getDashboard()
-    );
-  }
-);
+app.get("/api/dashboard", (req, res) => {
+  res.json(
+    getDashboard()
+  );
+});
 
 /*
 ==================================================
@@ -473,32 +300,25 @@ HEALTH
 ==================================================
 */
 
-app.get(
-  "/health",
-  (req, res) => {
-    res.json({
-      ok: true,
+app.get("/health", (req, res) => {
+  res.json({
+    ok: true,
 
-      pedidos:
-        Object.keys(
-          pedidos
-        ).length,
+    pedidos:
+      Object.keys(pedidos).length,
 
-      pedidos_hoje:
-        Object.values(
-          pedidos
-        ).filter(
-          pedido =>
-            isToday(
-              pedido.created_at
-            )
-        ).length,
+    pedidos_hoje:
+      Object.values(pedidos).filter(
+        pedido =>
+          isToday(
+            pedido.created_at
+          )
+      ).length,
 
-      hora:
-        new Date().toISOString()
-    });
-  }
-);
+    hora:
+      new Date().toISOString()
+  });
+});
 
 /*
 ==================================================
@@ -506,16 +326,13 @@ INICIAR
 ==================================================
 */
 
-app.listen(
-  PORT,
-  () => {
-    console.log(
-      `Contador rodando na porta ${PORT}`
-    );
+app.listen(PORT, () => {
+  console.log(
+    `Contador rodando na porta ${PORT}`
+  );
 
-    sincronizar();
-  }
-);
+  sincronizar();
+});
 
 /*
 ==================================================
