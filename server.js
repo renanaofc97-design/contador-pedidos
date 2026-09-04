@@ -8,16 +8,10 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
 const PORT = process.env.PORT || 3000;
-const API_TOKEN = process.env.CARDAPIO_API_TOKEN;
-
-const API_BASE =
-  "https://integracao.cardapioweb.com/api/partner/v1";
 
 const DATA_FILE = path.join(__dirname, "data.json");
 
 let orders = {};
-let totalToday = 0;
-let lastSync = null;
 
 const clients = new Set();
 
@@ -51,9 +45,7 @@ function saveData() {
       DATA_FILE,
       JSON.stringify(
         {
-          orders,
-          totalToday,
-          lastSync
+          orders
         },
         null,
         2
@@ -65,24 +57,6 @@ function saveData() {
 }
 
 loadData();
-
-/* =========================
-   DATA BRASIL
-========================= */
-
-function todayBR() {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Sao_Paulo"
-  }).format(new Date());
-}
-
-function startOfToday() {
-  return `${todayBR()}T00:00:00-03:00`;
-}
-
-function endOfToday() {
-  return `${todayBR()}T23:59:59-03:00`;
-}
 
 /* =========================
    STATUS
@@ -139,21 +113,51 @@ function getCounters() {
 }
 
 /* =========================
-   PAINEL
+   TOTAL DE PEDIDOS
+========================= */
+
+function getTotalToday() {
+  const hoje = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo"
+  }).format(new Date());
+
+  let total = 0;
+
+  for (const id in orders) {
+    const order = orders[id];
+
+    if (!order.created_at) continue;
+
+    const dataPedido = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Sao_Paulo"
+    }).format(new Date(order.created_at));
+
+    if (dataPedido === hoje) {
+      total++;
+    }
+  }
+
+  return total;
+}
+
+/* =========================
+   DADOS DO PAINEL
 ========================= */
 
 function dashboardData() {
   return {
-    total_today: totalToday,
-    counters: getCounters(),
-    last_sync: lastSync
+    total_today: getTotalToday(),
+    counters: getCounters()
   };
 }
 
+/* =========================
+   ATUALIZA PAINEL
+========================= */
+
 function broadcast() {
-  const data = `data: ${JSON.stringify(
-    dashboardData()
-  )}\n\n`;
+  const data =
+    `data: ${JSON.stringify(dashboardData())}\n\n`;
 
   for (const client of clients) {
     try {
@@ -196,6 +200,7 @@ app.post(
       };
 
       saveData();
+
       broadcast();
 
       res.json({
@@ -251,105 +256,12 @@ app.get("/events", (req, res) => {
 });
 
 /* =========================
-   API PARA O PAINEL
+   API DO PAINEL
 ========================= */
 
 app.get("/api/dashboard", (req, res) => {
   res.json(dashboardData());
 });
-
-/* =========================
-   SINCRONIZA TOTAL DE HOJE
-========================= */
-
-async function syncTotalToday() {
-  if (!API_TOKEN) {
-    console.log(
-      "CARDAPIO_API_TOKEN não configurado."
-    );
-    return;
-  }
-
-  try {
-    const url =
-      `${API_BASE}/orders/summary` +
-      `?start_date=${encodeURIComponent(startOfToday())}` +
-      `&end_date=${encodeURIComponent(endOfToday())}` +
-      `&date_field=created_at`;
-
-    console.log(
-      "Consultando total de pedidos..."
-    );
-
-    const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        Authorization:
-          `Bearer ${API_TOKEN}`,
-        Accept: "application/json"
-      }
-    });
-
-    if (!response.ok) {
-      const text = await response.text();
-
-      console.error(
-        "Erro Cardápio Web:",
-        response.status,
-        text
-      );
-
-      return;
-    }
-
-    const data = await response.json();
-
-    console.log(
-      "Resumo recebido:",
-      data
-    );
-
-    if (
-      typeof data.total_order_count ===
-      "number"
-    ) {
-      totalToday =
-        data.total_order_count;
-    }
-
-    lastSync =
-      new Date().toISOString();
-
-    saveData();
-    broadcast();
-
-    console.log(
-      `Total de hoje: ${totalToday}`
-    );
-
-  } catch (error) {
-    console.error(
-      "Erro sincronizando Cardápio Web:",
-      error
-    );
-  }
-}
-
-/* =========================
-   SINCRONIZAÇÃO AUTOMÁTICA
-========================= */
-
-/*
-   A API permite 5 requisições por minuto.
-   Vamos consultar uma vez por minuto.
-*/
-
-syncTotalToday();
-
-setInterval(
-  syncTotalToday,
-  60 * 1000
-);
 
 /* =========================
    HEALTH CHECK
@@ -358,8 +270,8 @@ setInterval(
 app.get("/health", (req, res) => {
   res.json({
     status: "ok",
-    total_today: totalToday,
-    api_configured: !!API_TOKEN
+    total_today: getTotalToday(),
+    webhook: true
   });
 });
 
