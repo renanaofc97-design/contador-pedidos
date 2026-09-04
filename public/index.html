@@ -1,3 +1,4 @@
+```html
 <!doctype html>
 <html lang="pt-BR">
 
@@ -7,8 +8,9 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<title>Dona Feijuca — Painel Operacional</title> 
-  <link
+<title>Dona Feijuca — Painel Operacional</title>
+
+<link
   rel="icon"
   href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🫘</text></svg>"
 >
@@ -384,6 +386,219 @@ h1{
       inset 0 0 45px rgba(255,0,0,.15);
   }
 
+}
+
+/* =========================================
+   META DE PEDIDOS
+========================================= */
+
+.goal-section{
+  padding:0 42px 25px;
+}
+
+.goal-card{
+  position:relative;
+
+  background:#090909;
+
+  border:1px solid #1b1b1b;
+
+  border-radius:18px;
+
+  padding:18px 22px 20px;
+
+  box-shadow:
+    0 15px 40px rgba(0,0,0,.5),
+    inset 0 1px 0 rgba(255,255,255,.025);
+
+  overflow:hidden;
+
+  transition:
+    border-color .5s ease,
+    box-shadow .5s ease;
+}
+
+.goal-header{
+  display:flex;
+
+  justify-content:space-between;
+
+  align-items:flex-end;
+
+  margin-bottom:13px;
+}
+
+.goal-title{
+  font-size:11px;
+
+  text-transform:uppercase;
+
+  letter-spacing:2px;
+
+  color:#666;
+
+  font-weight:900;
+}
+
+.goal-number{
+  margin-top:4px;
+
+  font-size:24px;
+
+  font-weight:900;
+
+  letter-spacing:-1px;
+}
+
+.goal-number span{
+  color:#666;
+
+  font-size:13px;
+
+  letter-spacing:0;
+}
+
+.goal-percent{
+  font-size:18px;
+
+  font-weight:900;
+
+  color:#ffd400;
+
+  text-shadow:
+    0 0 12px rgba(255,210,0,.35);
+
+  transition:
+    color .4s ease,
+    text-shadow .4s ease;
+}
+
+.goal-bar{
+  width:100%;
+
+  height:18px;
+
+  background:#151515;
+
+  border:1px solid #252525;
+
+  border-radius:999px;
+
+  overflow:hidden;
+
+  box-shadow:
+    inset 0 2px 5px rgba(0,0,0,.7);
+}
+
+.goal-progress{
+  width:0%;
+
+  height:100%;
+
+  border-radius:999px;
+
+  background:
+    linear-gradient(
+      90deg,
+      #8c6f00,
+      #ffd400
+    );
+
+  box-shadow:
+    0 0 15px rgba(255,210,0,.35),
+    0 0 30px rgba(255,210,0,.15);
+
+  transition:
+    width 1s cubic-bezier(.22,1,.36,1);
+
+  position:relative;
+
+  overflow:hidden;
+}
+
+.goal-progress::after{
+  content:"";
+
+  position:absolute;
+
+  top:0;
+  left:-30%;
+
+  width:30%;
+  height:100%;
+
+  background:
+    linear-gradient(
+      90deg,
+      transparent,
+      rgba(255,255,255,.45),
+      transparent
+    );
+
+  animation:
+    goalShine 2.5s linear infinite;
+}
+
+@keyframes goalShine{
+
+  0%{
+    left:-30%;
+  }
+
+  100%{
+    left:130%;
+  }
+
+}
+
+.goal-card.completed{
+  border-color:
+    rgba(101,255,0,.45);
+
+  box-shadow:
+    0 0 30px rgba(90,255,0,.12),
+    inset 0 0 30px rgba(90,255,0,.025);
+}
+
+.goal-card.completed .goal-progress{
+  background:
+    linear-gradient(
+      90deg,
+      #318500,
+      #65ff00
+    );
+
+  box-shadow:
+    0 0 18px rgba(100,255,0,.5),
+    0 0 35px rgba(100,255,0,.2);
+}
+
+.goal-card.completed .goal-percent{
+  color:#65ff00;
+
+  text-shadow:
+    0 0 15px rgba(100,255,0,.6);
+}
+
+.goal-message{
+  margin-top:9px;
+
+  font-size:9px;
+
+  text-transform:uppercase;
+
+  letter-spacing:1.5px;
+
+  color:#555;
+
+  font-weight:900;
+
+  transition:
+    color .4s ease;
+}
+
+.goal-card.completed .goal-message{
+  color:#65ff00;
 }
 
 /* =========================================
@@ -987,6 +1202,18 @@ td{
     font-size:45px;
   }
 
+  .goal-section{
+    padding:0 18px 20px;
+  }
+
+  .goal-header{
+    align-items:center;
+  }
+
+  .goal-number{
+    font-size:20px;
+  }
+
   .kanban{
     grid-template-columns:1fr;
 
@@ -1047,6 +1274,11 @@ td{
 
   .prep-time-number{
     font-size:60px;
+  }
+
+  .goal-section{
+    padding-left:55px;
+    padding-right:55px;
   }
 
   .kanban{
@@ -1179,6 +1411,68 @@ td{
 
     <div class="summary-icon">
       ✓
+    </div>
+
+  </div>
+
+</div>
+
+<!-- =========================================
+     META DE PEDIDOS
+========================================= -->
+
+<div class="goal-section">
+
+  <div
+    class="goal-card"
+    id="goal_card"
+  >
+
+    <div class="goal-header">
+
+      <div>
+
+        <div class="goal-title">
+          Meta de pedidos hoje
+        </div>
+
+        <div class="goal-number">
+
+          <span id="goal_current">
+            0
+          </span>
+
+          <span>
+            / 250 pedidos
+          </span>
+
+        </div>
+
+      </div>
+
+      <div
+        class="goal-percent"
+        id="goal_percent"
+      >
+        0%
+      </div>
+
+    </div>
+
+    <div class="goal-bar">
+
+      <div
+        class="goal-progress"
+        id="goal_progress"
+      ></div>
+
+    </div>
+
+    <div
+      class="goal-message"
+      id="goal_message"
+    >
+      Meta diária: 250 pedidos
     </div>
 
   </div>
@@ -1518,11 +1812,82 @@ function updatePrepTime(minutes){
       "ok"
     );
 
-  } else {
+  }else{
 
     card.classList.add(
       "late"
     );
+
+  }
+
+}
+
+/*
+==================================================
+META DE PEDIDOS
+==================================================
+*/
+
+function updateGoal(total){
+
+  const meta = 250;
+
+  const current =
+    Number(total) || 0;
+
+  const percentage =
+    Math.min(
+      (current / meta) * 100,
+      100
+    );
+
+  const realPercentage =
+    (current / meta) * 100;
+
+  document.getElementById(
+    "goal_current"
+  ).textContent =
+    current;
+
+  document.getElementById(
+    "goal_percent"
+  ).textContent =
+    `${realPercentage.toFixed(1)}%`;
+
+  document.getElementById(
+    "goal_progress"
+  ).style.width =
+    `${percentage}%`;
+
+  const card =
+    document.getElementById(
+      "goal_card"
+    );
+
+  const message =
+    document.getElementById(
+      "goal_message"
+    );
+
+  if(current >= meta){
+
+    card.classList.add(
+      "completed"
+    );
+
+    message.textContent =
+      current === meta
+        ? "🏆 META BATIDA!"
+        : `🔥 META SUPERADA — ${current - meta} pedidos acima`;
+
+  }else{
+
+    card.classList.remove(
+      "completed"
+    );
+
+    message.textContent =
+      `Faltam ${meta - current} pedidos para a meta`;
 
   }
 
@@ -1639,12 +2004,25 @@ function render(data){
   ================================================
   */
 
-  document.getElementById(
-    "total_today"
-  ).textContent =
+  const totalToday =
     Number(
       data.total_today
     ) || 0;
+
+  document.getElementById(
+    "total_today"
+  ).textContent =
+    totalToday;
+
+  /*
+  ================================================
+  META
+  ================================================
+  */
+
+  updateGoal(
+    totalToday
+  );
 
   /*
   ================================================
@@ -1850,3 +2228,4 @@ boot();
 </body>
 
 </html>
+```
