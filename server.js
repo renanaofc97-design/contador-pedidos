@@ -1,3 +1,4 @@
+```javascript
 const express = require("express");
 const fs = require("fs");
 const path = require("path");
@@ -10,6 +11,13 @@ app.use(express.static(path.join(__dirname, "public")));
 const PORT = process.env.PORT || 3000;
 
 const DATA_FILE = path.join(__dirname, "data.json");
+
+// Token do Cardápio Web
+const CARDAPIO_API_KEY = process.env.CARDAPIO_API_KEY;
+
+// URL da API de produção
+const CARDAPIO_API_URL =
+  "https://integracao.cardapioweb.com/api/partner/v1";
 
 let orders = {};
 
@@ -169,6 +177,152 @@ function broadcast() {
 }
 
 /* =========================
+   BUSCAR HISTÓRICO DO DIA
+========================= */
+
+async function syncTodayOrders() {
+  if (!CARDAPIO_API_KEY) {
+    console.error(
+      "CARDAPIO_API_KEY não configurada no Render."
+    );
+    return;
+  }
+
+  try {
+    const agora = new Date();
+
+    // Início do dia no horário de São Paulo
+    const formatter = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Sao_Paulo",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit"
+    });
+
+    const partes = formatter.formatToParts(agora);
+
+    const ano = partes.find(p => p.type === "year").value;
+    const mes = partes.find(p => p.type === "month").value;
+    const dia = partes.find(p => p.type === "day").value;
+
+    const startDate =
+      `${ano}-${mes}-${dia}T00:00:00-03:00`;
+
+    const endDate =
+      `${ano}-${mes}-${dia}T23:59:59-03:00`;
+
+    console.log(
+      "Sincronizando histórico de hoje:",
+      startDate,
+      "até",
+      endDate
+    );
+
+    let page = 1;
+    let totalImportados = 0;
+
+    while (true) {
+      const url =
+        `${CARDAPIO_API_URL}/orders/history` +
+        `?start_date=${encodeURIComponent(startDate)}` +
+        `&end_date=${encodeURIComponent(endDate)}` +
+        `&page=${page}` +
+        `&per_page=100`;
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          "X-API-KEY": CARDAPIO_API_KEY,
+          "Accept": "application/json"
+        }
+      });
+
+      const text = await response.text();
+
+      if (!response.ok) {
+        console.error(
+          "Erro Cardápio Web:",
+          response.status,
+          text
+        );
+        return;
+      }
+
+      let data;
+
+      try {
+        data = JSON.parse(text);
+      } catch {
+        console.error(
+          "Resposta inválida do Cardápio Web:",
+          text
+        );
+        return;
+      }
+
+      const pedidos = data.orders || [];
+
+      console.log(
+        `Página ${page}: ${pedidos.length} pedidos`
+      );
+
+      for (const pedido of pedidos) {
+        if (!pedido.id) continue;
+
+        const id = String(pedido.id);
+
+        // Mantém informações já recebidas pelo webhook
+        orders[id] = {
+          ...orders[id],
+          ...pedido,
+          id: pedido.id,
+          status: pedido.status,
+          created_at:
+            pedido.created_at ||
+            orders[id]?.created_at,
+          updated_at:
+            pedido.updated_at ||
+            orders[id]?.updated_at ||
+            new Date().toISOString()
+        };
+
+        totalImportados++;
+      }
+
+      saveData();
+      broadcast();
+
+      // Se vieram menos de 100, acabou
+      if (pedidos.length < 100) {
+        break;
+      }
+
+      page++;
+
+      // Segurança contra paginação infinita
+      if (page > 100) {
+        console.error(
+          "Limite de segurança de paginação atingido."
+        );
+        break;
+      }
+    }
+
+    console.log(
+      `Histórico sincronizado. ${totalImportados} pedidos processados.`
+    );
+
+    broadcast();
+
+  } catch (error) {
+    console.error(
+      "Erro ao sincronizar histórico:",
+      error
+    );
+  }
+}
+
+/* =========================
    WEBHOOK CARDÁPIO WEB
 ========================= */
 
@@ -191,11 +345,16 @@ app.post(
 
       const id = String(event.order_id);
 
+      const pedidoExistente = orders[id] || {};
+
       orders[id] = {
+        ...pedidoExistente,
         id: event.order_id,
         status: event.order_status,
         event_type: event.event_type,
-        created_at: event.created_at,
+        created_at:
+          pedidoExistente.created_at ||
+          event.created_at,
         updated_at: new Date().toISOString()
       };
 
@@ -271,7 +430,8 @@ app.get("/health", (req, res) => {
   res.json({
     status: "ok",
     total_today: getTotalToday(),
-    webhook: true
+    webhook: true,
+    api_configurada: !!CARDAPIO_API_KEY
   });
 });
 
@@ -279,8 +439,12 @@ app.get("/health", (req, res) => {
    SERVIDOR
 ========================= */
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(
     `Contador rodando na porta ${PORT}`
   );
+
+  // Recupera os pedidos de hoje ao iniciar
+  await syncTodayOrders();
 });
+```
