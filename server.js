@@ -164,17 +164,11 @@ function dashboardData() {
 ========================= */
 
 function broadcast() {
-  const data =
-    `data: ${JSON.stringify(dashboardData())}\n\n`;
+  const message = `data: ${JSON.stringify(dashboardData())}\n\n`;
 
-  for (const client of clients) {
-    try {
-      client.write(data);
-    } catch {
-      clients.delete(client);
-    }
+  for (const res of clients) {
+    res.write(message);
   }
-}
 
 /* =========================
    BUSCAR HISTÓRICO DO DIA
