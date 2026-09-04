@@ -14,7 +14,7 @@ const DATA_FILE = path.join(__dirname, "data.json");
 // Token do Cardápio Web
 const CARDAPIO_API_KEY = process.env.CARDAPIO_API_KEY;
 
-// URL da API
+// API do Cardápio Web
 const CARDAPIO_API_URL =
   "https://integracao.cardapioweb.com/api/partner/v1";
 
@@ -41,7 +41,11 @@ function loadData() {
       orders = data.orders;
     }
   } catch (error) {
-    console.error("Erro ao carregar data.json:", error);
+    console.error(
+      "Erro ao carregar data.json:",
+      error
+    );
+
     orders = {};
   }
 }
@@ -59,7 +63,10 @@ function saveData() {
       )
     );
   } catch (error) {
-    console.error("Erro ao salvar data.json:", error);
+    console.error(
+      "Erro ao salvar data.json:",
+      error
+    );
   }
 }
 
@@ -82,7 +89,9 @@ function getCounters() {
   for (const id in orders) {
     const order = orders[id];
 
-    if (!order.status) continue;
+    if (!order.status) {
+      continue;
+    }
 
     switch (order.status) {
       case "waiting_confirmation":
@@ -124,21 +133,30 @@ function getCounters() {
    TOTAL DE PEDIDOS DE HOJE
 ========================= */
 
-function getTotalToday() {
-  const hoje = new Intl.DateTimeFormat("en-CA", {
+function getTodayString() {
+  return new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Sao_Paulo"
   }).format(new Date());
+}
+
+function getTotalToday() {
+  const hoje = getTodayString();
 
   let total = 0;
 
   for (const id in orders) {
     const order = orders[id];
 
-    if (!order.created_at) continue;
+    if (!order.created_at) {
+      continue;
+    }
 
-    const dataPedido = new Intl.DateTimeFormat("en-CA", {
-      timeZone: "America/Sao_Paulo"
-    }).format(new Date(order.created_at));
+    const dataPedido =
+      new Intl.DateTimeFormat("en-CA", {
+        timeZone: "America/Sao_Paulo"
+      }).format(
+        new Date(order.created_at)
+      );
 
     if (dataPedido === hoje) {
       total++;
@@ -160,12 +178,14 @@ function dashboardData() {
 }
 
 /* =========================
-   ATUALIZA PAINEL
+   ATUALIZAR PAINEL
 ========================= */
 
 function broadcast() {
   const message =
-    "data: " + JSON.stringify(dashboardData()) + "\n\n";
+    "data: " +
+    JSON.stringify(dashboardData()) +
+    "\n\n";
 
   for (const res of clients) {
     try {
@@ -177,169 +197,120 @@ function broadcast() {
 }
 
 /* =========================
-   SINCRONIZAR PEDIDOS DE HOJE
+   SINCRONIZAR PEDIDOS
+   API /orders
 ========================= */
 
-async function syncTodayOrders() {
+async function syncOrders() {
   if (!CARDAPIO_API_KEY) {
     console.error(
       "CARDAPIO_API_KEY não configurada no Render."
     );
+
     return;
   }
 
   try {
-    const agora = new Date();
-
-    const formatter = new Intl.DateTimeFormat("en-CA", {
-      timeZone: "America/Sao_Paulo",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit"
-    });
-
-    const partes = formatter.formatToParts(agora);
-
-    const ano = partes.find(
-      p => p.type === "year"
-    ).value;
-
-    const mes = partes.find(
-      p => p.type === "month"
-    ).value;
-
-    const dia = partes.find(
-      p => p.type === "day"
-    ).value;
-
-    const startDate =
-      ano + "-" + mes + "-" + dia +
-      "T00:00:00-03:00";
-
-    const endDate =
-      ano + "-" + mes + "-" + dia +
-      "T23:59:59-03:00";
-
     console.log(
-      "Sincronizando histórico de hoje:",
-      startDate,
-      "até",
-      endDate
+      "Consultando pedidos no Cardápio Web..."
     );
 
-    let page = 1;
-    let totalImportados = 0;
+    const url =
+      CARDAPIO_API_URL +
+      "/orders";
 
-    while (true) {
-      const url =
-        CARDAPIO_API_URL +
-        "/orders/history" +
-        "?start_date=" +
-        encodeURIComponent(startDate) +
-        "&end_date=" +
-        encodeURIComponent(endDate) +
-        "&page=" +
-        page +
-        "&per_page=100";
+    const response = await fetch(url, {
+      method: "GET",
 
-      console.log(
-        "Consultando página:",
-        page
+      headers: {
+        "X-API-KEY": CARDAPIO_API_KEY,
+        "Accept": "application/json"
+      }
+    });
+
+    const text = await response.text();
+
+    if (!response.ok) {
+      console.error(
+        "Erro Cardápio Web:",
+        response.status,
+        text
       );
 
-      const response = await fetch(url, {
-        method: "GET",
-        headers: {
-          "X-API-KEY": CARDAPIO_API_KEY,
-          "Accept": "application/json"
-        }
-      });
+      return;
+    }
 
-      const text = await response.text();
+    let data;
 
-      if (!response.ok) {
-        console.error(
-          "Erro Cardápio Web:",
-          response.status,
-          text
-        );
-        return;
-      }
-
-      let data;
-
-      try {
-        data = JSON.parse(text);
-      } catch (error) {
-        console.error(
-          "Resposta inválida do Cardápio Web:",
-          text
-        );
-        return;
-      }
-
-      const pedidos = data.orders || [];
-
-      console.log(
-        "Página " +
-        page +
-        ": " +
-        pedidos.length +
-        " pedidos"
+    try {
+      data = JSON.parse(text);
+    } catch (error) {
+      console.error(
+        "Resposta inválida do Cardápio Web:",
+        text
       );
 
-      for (const pedido of pedidos) {
-        if (!pedido.id) continue;
+      return;
+    }
 
-        const id = String(pedido.id);
+    const pedidos =
+      data.orders || [];
 
-        const pedidoExistente =
-          orders[id] || {};
+    console.log(
+      "Pedidos recebidos pela API:",
+      pedidos.length
+    );
 
-        orders[id] = {
-          ...pedidoExistente,
-          ...pedido,
+    let novos = 0;
+    let atualizados = 0;
 
-          id: pedido.id,
-
-          status:
-            pedido.status ||
-            pedidoExistente.status,
-
-          created_at:
-            pedido.created_at ||
-            pedidoExistente.created_at,
-
-          updated_at:
-            pedido.updated_at ||
-            pedidoExistente.updated_at ||
-            new Date().toISOString()
-        };
-
-        totalImportados++;
+    for (const pedido of pedidos) {
+      if (!pedido.id) {
+        continue;
       }
 
-      saveData();
-      broadcast();
+      const id = String(pedido.id);
 
-      if (pedidos.length < 100) {
-        break;
-      }
+      const existente =
+        orders[id];
 
-      page++;
+      orders[id] = {
+        ...(existente || {}),
+        ...pedido,
 
-      if (page > 100) {
-        console.error(
-          "Limite de segurança de paginação atingido."
-        );
-        break;
+        id: pedido.id,
+
+        status:
+          pedido.status ||
+          existente?.status,
+
+        created_at:
+          pedido.created_at ||
+          existente?.created_at,
+
+        updated_at:
+          pedido.updated_at ||
+          existente?.updated_at ||
+          new Date().toISOString()
+      };
+
+      if (existente) {
+        atualizados++;
+      } else {
+        novos++;
       }
     }
 
+    saveData();
+
     console.log(
-      "Histórico sincronizado. " +
-      totalImportados +
-      " pedidos processados."
+      "Novos pedidos:",
+      novos
+    );
+
+    console.log(
+      "Pedidos atualizados:",
+      atualizados
     );
 
     console.log(
@@ -351,7 +322,7 @@ async function syncTodayOrders() {
 
   } catch (error) {
     console.error(
-      "Erro ao sincronizar histórico:",
+      "Erro ao consultar /orders:",
       error
     );
   }
@@ -365,7 +336,8 @@ app.post(
   "/webhook/cardapioweb",
   (req, res) => {
     try {
-      const event = req.body;
+      const event =
+        req.body;
 
       console.log(
         "Webhook recebido:",
@@ -374,31 +346,31 @@ app.post(
 
       if (!event.order_id) {
         return res.status(400).json({
-          error: "order_id não informado"
+          error:
+            "order_id não informado"
         });
       }
 
-      const id = String(
-        event.order_id
-      );
+      const id =
+        String(event.order_id);
 
-      const pedidoExistente =
+      const existente =
         orders[id] || {};
 
       orders[id] = {
-        ...pedidoExistente,
+        ...existente,
 
         id: event.order_id,
 
         status:
           event.order_status ||
-          pedidoExistente.status,
+          existente.status,
 
         event_type:
           event.event_type,
 
         created_at:
-          pedidoExistente.created_at ||
+          existente.created_at ||
           event.created_at,
 
         updated_at:
@@ -420,7 +392,8 @@ app.post(
       );
 
       res.status(500).json({
-        error: "Erro interno"
+        error:
+          "Erro interno"
       });
     }
   }
@@ -433,6 +406,7 @@ app.post(
 app.get(
   "/events",
   (req, res) => {
+
     res.setHeader(
       "Content-Type",
       "text/event-stream"
@@ -452,18 +426,21 @@ app.get(
 
     clients.add(res);
 
-    const initialMessage =
+    const message =
       "data: " +
       JSON.stringify(
         dashboardData()
       ) +
       "\n\n";
 
-    res.write(initialMessage);
+    res.write(message);
 
-    req.on("close", () => {
-      clients.delete(res);
-    });
+    req.on(
+      "close",
+      () => {
+        clients.delete(res);
+      }
+    );
   }
 );
 
@@ -474,6 +451,7 @@ app.get(
 app.get(
   "/api/dashboard",
   (req, res) => {
+
     res.json(
       dashboardData()
     );
@@ -487,12 +465,20 @@ app.get(
 app.get(
   "/health",
   (req, res) => {
+
     res.json({
       status: "ok",
-      total_today: getTotalToday(),
+
+      total_today:
+        getTotalToday(),
+
       webhook: true,
+
       api_configurada:
-        !!CARDAPIO_API_KEY
+        !!CARDAPIO_API_KEY,
+
+      pedidos_salvos:
+        Object.keys(orders).length
     });
   }
 );
@@ -504,6 +490,7 @@ app.get(
 app.listen(
   PORT,
   async () => {
+
     console.log(
       "Contador rodando na porta " +
       PORT
@@ -514,6 +501,13 @@ app.listen(
       !!CARDAPIO_API_KEY
     );
 
-    await syncTodayOrders();
+    // Sincroniza imediatamente
+    await syncOrders();
+
+    // Atualiza a cada 30 segundos
+    setInterval(
+      syncOrders,
+      30000
+    );
   }
 );
