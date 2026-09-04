@@ -1,4 +1,3 @@
-```javascript
 const express = require("express");
 const fs = require("fs");
 const path = require("path");
@@ -15,7 +14,7 @@ const DATA_FILE = path.join(__dirname, "data.json");
 // Token do Cardápio Web
 const CARDAPIO_API_KEY = process.env.CARDAPIO_API_KEY;
 
-// URL da API de produção
+// URL da API
 const CARDAPIO_API_URL =
   "https://integracao.cardapioweb.com/api/partner/v1";
 
@@ -107,6 +106,7 @@ function getCounters() {
         break;
 
       case "delivered":
+      case "closed":
         counters.entregues++;
         break;
 
@@ -121,7 +121,7 @@ function getCounters() {
 }
 
 /* =========================
-   TOTAL DE PEDIDOS
+   TOTAL DE PEDIDOS DE HOJE
 ========================= */
 
 function getTotalToday() {
@@ -168,11 +168,16 @@ function broadcast() {
     "data: " + JSON.stringify(dashboardData()) + "\n\n";
 
   for (const res of clients) {
-    res.write(message);
+    try {
+      res.write(message);
+    } catch (error) {
+      clients.delete(res);
+    }
   }
 }
+
 /* =========================
-   BUSCAR HISTÓRICO DO DIA
+   SINCRONIZAR PEDIDOS DE HOJE
 ========================= */
 
 async function syncTodayOrders() {
@@ -186,7 +191,6 @@ async function syncTodayOrders() {
   try {
     const agora = new Date();
 
-    // Início do dia no horário de São Paulo
     const formatter = new Intl.DateTimeFormat("en-CA", {
       timeZone: "America/Sao_Paulo",
       year: "numeric",
@@ -196,15 +200,25 @@ async function syncTodayOrders() {
 
     const partes = formatter.formatToParts(agora);
 
-    const ano = partes.find(p => p.type === "year").value;
-    const mes = partes.find(p => p.type === "month").value;
-    const dia = partes.find(p => p.type === "day").value;
+    const ano = partes.find(
+      p => p.type === "year"
+    ).value;
+
+    const mes = partes.find(
+      p => p.type === "month"
+    ).value;
+
+    const dia = partes.find(
+      p => p.type === "day"
+    ).value;
 
     const startDate =
-      `${ano}-${mes}-${dia}T00:00:00-03:00`;
+      ano + "-" + mes + "-" + dia +
+      "T00:00:00-03:00";
 
     const endDate =
-      `${ano}-${mes}-${dia}T23:59:59-03:00`;
+      ano + "-" + mes + "-" + dia +
+      "T23:59:59-03:00";
 
     console.log(
       "Sincronizando histórico de hoje:",
@@ -218,11 +232,20 @@ async function syncTodayOrders() {
 
     while (true) {
       const url =
-        `${CARDAPIO_API_URL}/orders/history` +
-        `?start_date=${encodeURIComponent(startDate)}` +
-        `&end_date=${encodeURIComponent(endDate)}` +
-        `&page=${page}` +
-        `&per_page=100`;
+        CARDAPIO_API_URL +
+        "/orders/history" +
+        "?start_date=" +
+        encodeURIComponent(startDate) +
+        "&end_date=" +
+        encodeURIComponent(endDate) +
+        "&page=" +
+        page +
+        "&per_page=100";
+
+      console.log(
+        "Consultando página:",
+        page
+      );
 
       const response = await fetch(url, {
         method: "GET",
@@ -247,7 +270,7 @@ async function syncTodayOrders() {
 
       try {
         data = JSON.parse(text);
-      } catch {
+      } catch (error) {
         console.error(
           "Resposta inválida do Cardápio Web:",
           text
@@ -258,7 +281,11 @@ async function syncTodayOrders() {
       const pedidos = data.orders || [];
 
       console.log(
-        `Página ${page}: ${pedidos.length} pedidos`
+        "Página " +
+        page +
+        ": " +
+        pedidos.length +
+        " pedidos"
       );
 
       for (const pedido of pedidos) {
@@ -266,18 +293,26 @@ async function syncTodayOrders() {
 
         const id = String(pedido.id);
 
-        // Mantém informações já recebidas pelo webhook
+        const pedidoExistente =
+          orders[id] || {};
+
         orders[id] = {
-          ...orders[id],
+          ...pedidoExistente,
           ...pedido,
+
           id: pedido.id,
-          status: pedido.status,
+
+          status:
+            pedido.status ||
+            pedidoExistente.status,
+
           created_at:
             pedido.created_at ||
-            orders[id]?.created_at,
+            pedidoExistente.created_at,
+
           updated_at:
             pedido.updated_at ||
-            orders[id]?.updated_at ||
+            pedidoExistente.updated_at ||
             new Date().toISOString()
         };
 
@@ -287,14 +322,12 @@ async function syncTodayOrders() {
       saveData();
       broadcast();
 
-      // Se vieram menos de 100, acabou
       if (pedidos.length < 100) {
         break;
       }
 
       page++;
 
-      // Segurança contra paginação infinita
       if (page > 100) {
         console.error(
           "Limite de segurança de paginação atingido."
@@ -304,7 +337,14 @@ async function syncTodayOrders() {
     }
 
     console.log(
-      `Histórico sincronizado. ${totalImportados} pedidos processados.`
+      "Histórico sincronizado. " +
+      totalImportados +
+      " pedidos processados."
+    );
+
+    console.log(
+      "TOTAL DE PEDIDOS HOJE:",
+      getTotalToday()
     );
 
     broadcast();
@@ -338,19 +378,31 @@ app.post(
         });
       }
 
-      const id = String(event.order_id);
+      const id = String(
+        event.order_id
+      );
 
-      const pedidoExistente = orders[id] || {};
+      const pedidoExistente =
+        orders[id] || {};
 
       orders[id] = {
         ...pedidoExistente,
+
         id: event.order_id,
-        status: event.order_status,
-        event_type: event.event_type,
+
+        status:
+          event.order_status ||
+          pedidoExistente.status,
+
+        event_type:
+          event.event_type,
+
         created_at:
           pedidoExistente.created_at ||
           event.created_at,
-        updated_at: new Date().toISOString()
+
+        updated_at:
+          new Date().toISOString()
       };
 
       saveData();
@@ -378,68 +430,90 @@ app.post(
    SSE
 ========================= */
 
-app.get("/events", (req, res) => {
-  res.setHeader(
-    "Content-Type",
-    "text/event-stream"
-  );
+app.get(
+  "/events",
+  (req, res) => {
+    res.setHeader(
+      "Content-Type",
+      "text/event-stream"
+    );
 
-  res.setHeader(
-    "Cache-Control",
-    "no-cache"
-  );
+    res.setHeader(
+      "Cache-Control",
+      "no-cache"
+    );
 
-  res.setHeader(
-    "Connection",
-    "keep-alive"
-  );
+    res.setHeader(
+      "Connection",
+      "keep-alive"
+    );
 
-  res.flushHeaders();
+    res.flushHeaders();
 
-  clients.add(res);
+    clients.add(res);
 
-  res.write(
-    `data: ${JSON.stringify(
-      dashboardData()
-    )}\n\n`
-  );
+    const initialMessage =
+      "data: " +
+      JSON.stringify(
+        dashboardData()
+      ) +
+      "\n\n";
 
-  req.on("close", () => {
-    clients.delete(res);
-  });
-});
+    res.write(initialMessage);
+
+    req.on("close", () => {
+      clients.delete(res);
+    });
+  }
+);
 
 /* =========================
    API DO PAINEL
 ========================= */
 
-app.get("/api/dashboard", (req, res) => {
-  res.json(dashboardData());
-});
+app.get(
+  "/api/dashboard",
+  (req, res) => {
+    res.json(
+      dashboardData()
+    );
+  }
+);
 
 /* =========================
    HEALTH CHECK
 ========================= */
 
-app.get("/health", (req, res) => {
-  res.json({
-    status: "ok",
-    total_today: getTotalToday(),
-    webhook: true,
-    api_configurada: !!CARDAPIO_API_KEY
-  });
-});
+app.get(
+  "/health",
+  (req, res) => {
+    res.json({
+      status: "ok",
+      total_today: getTotalToday(),
+      webhook: true,
+      api_configurada:
+        !!CARDAPIO_API_KEY
+    });
+  }
+);
 
 /* =========================
    SERVIDOR
 ========================= */
 
-app.listen(PORT, async () => {
-  console.log(
-    `Contador rodando na porta ${PORT}`
-  );
+app.listen(
+  PORT,
+  async () => {
+    console.log(
+      "Contador rodando na porta " +
+      PORT
+    );
 
-  // Recupera os pedidos de hoje ao iniciar
-  await syncTodayOrders();
-});
-```
+    console.log(
+      "API configurada:",
+      !!CARDAPIO_API_KEY
+    );
+
+    await syncTodayOrders();
+  }
+);
