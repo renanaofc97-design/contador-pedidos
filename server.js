@@ -16,17 +16,99 @@ const MERCHANT_ID = "51038";
 let orders = {};
 let clients = [];
 
+/*
+==================================================
+DATA / HISTÓRICO
+==================================================
+*/
+
+function getTodayString() {
+  const now = new Date();
+
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+/*
+  Histórico separado dos pedidos.
+
+  Assim, mesmo quando o pedido for fechado,
+  o tempo de preparo continua guardado.
+*/
+let dailyStats = {
+  date: getTodayString(),
+  prepTimes: {},
+  deliveryTimes: {}
+};
+
+function resetDailyStatsIfNeeded() {
+  const hoje = getTodayString();
+
+  if (!dailyStats || dailyStats.date !== hoje) {
+    console.log(
+      "Novo dia detectado. Iniciando histórico:",
+      hoje
+    );
+
+    dailyStats = {
+      date: hoje,
+      prepTimes: {},
+      deliveryTimes: {}
+    };
+  }
+
+  if (!dailyStats.prepTimes) {
+    dailyStats.prepTimes = {};
+  }
+
+  if (!dailyStats.deliveryTimes) {
+    dailyStats.deliveryTimes = {};
+  }
+}
+
 function loadData() {
   try {
-    if (fs.existsSync(DATA_FILE)) {
-      const data = JSON.parse(
-        fs.readFileSync(DATA_FILE, "utf8")
-      );
-
-      if (data && data.orders) {
-        orders = data.orders;
-      }
+    if (!fs.existsSync(DATA_FILE)) {
+      console.log("data.json ainda não existe.");
+      resetDailyStatsIfNeeded();
+      return;
     }
+
+    const data = JSON.parse(
+      fs.readFileSync(DATA_FILE, "utf8")
+    );
+
+    if (data && data.orders) {
+      orders = data.orders;
+    }
+
+    if (data && data.dailyStats) {
+      dailyStats = data.dailyStats;
+    }
+
+    resetDailyStatsIfNeeded();
+
+    /*
+      Reconstrói o histórico a partir dos pedidos
+      que já possuem prep_time_minutes.
+
+      Isso ajuda a recuperar dados antigos.
+    */
+    rebuildDailyStatsFromOrders();
+
+    console.log(
+      "Pedidos carregados:",
+      Object.keys(orders).length
+    );
+
+    console.log(
+      "Tempos de preparo carregados:",
+      Object.keys(dailyStats.prepTimes).length
+    );
+
   } catch (error) {
     console.error(
       "Erro ao carregar data.json:",
@@ -37,9 +119,18 @@ function loadData() {
 
 function saveData() {
   try {
+    resetDailyStatsIfNeeded();
+
     fs.writeFileSync(
       DATA_FILE,
-      JSON.stringify({ orders }, null, 2)
+      JSON.stringify(
+        {
+          orders,
+          dailyStats
+        },
+        null,
+        2
+      )
     );
   } catch (error) {
     console.error(
@@ -49,22 +140,16 @@ function saveData() {
   }
 }
 
-function getTodayString() {
-  const now = new Date();
-
-  const year = now.getFullYear();
-  const month = String(
-    now.getMonth() + 1
-  ).padStart(2, "0");
-  const day = String(
-    now.getDate()
-  ).padStart(2, "0");
-
-  return `${year}-${month}-${day}`;
-}
+/*
+==================================================
+DATA
+==================================================
+*/
 
 function isToday(dateString) {
-  if (!dateString) return false;
+  if (!dateString) {
+    return false;
+  }
 
   const date = new Date(dateString);
 
@@ -73,9 +158,11 @@ function isToday(dateString) {
   }
 
   const year = date.getFullYear();
+
   const month = String(
     date.getMonth() + 1
   ).padStart(2, "0");
+
   const day = String(
     date.getDate()
   ).padStart(2, "0");
@@ -86,8 +173,16 @@ function isToday(dateString) {
   );
 }
 
+/*
+==================================================
+SALVAR PEDIDO
+==================================================
+*/
+
 function saveOrder(pedido) {
-  if (!pedido) return null;
+  if (!pedido) {
+    return null;
+  }
 
   const id =
     pedido.id ||
@@ -107,10 +202,13 @@ function saveOrder(pedido) {
 
     id: id,
 
+    /*
+      Nunca substitui um created_at que já temos.
+    */
     created_at:
       existente.created_at ||
       pedido.created_at ||
-      new Date().toISOString(),
+      null,
 
     ready_at:
       existente.ready_at ||
@@ -141,13 +239,102 @@ function saveOrder(pedido) {
   return orders[id];
 }
 
+/*
+==================================================
+RECONSTRUIR HISTÓRICO
+==================================================
+*/
+
+function rebuildDailyStatsFromOrders() {
+  resetDailyStatsIfNeeded();
+
+  let prepCount = 0;
+  let deliveryCount = 0;
+
+  for (const id in orders) {
+    const order = orders[id];
+
+    if (!order) {
+      continue;
+    }
+
+    if (!order.created_at) {
+      continue;
+    }
+
+    if (!isToday(order.created_at)) {
+      continue;
+    }
+
+    const prep =
+      Number(order.prep_time_minutes);
+
+    if (
+      Number.isFinite(prep) &&
+      prep >= 0 &&
+      prep <= 180
+    ) {
+      dailyStats.prepTimes[id] = prep;
+      prepCount++;
+    }
+
+    const delivery =
+      Number(order.delivery_time_minutes);
+
+    if (
+      Number.isFinite(delivery) &&
+      delivery >= 0 &&
+      delivery <= 240
+    ) {
+      dailyStats.deliveryTimes[id] = delivery;
+      deliveryCount++;
+    }
+  }
+
+  console.log(
+    "Histórico reconstruído."
+  );
+
+  console.log(
+    "Tempos de preparo:",
+    prepCount
+  );
+
+  console.log(
+    "Tempos de entrega:",
+    deliveryCount
+  );
+}
+
+/*
+==================================================
+TEMPO DE PREPARO
+==================================================
+*/
+
 function registerReady(
   order,
   eventCreatedAt
 ) {
-  if (!order) return;
+  if (!order) {
+    return;
+  }
 
-  if (order.ready_at) {
+  resetDailyStatsIfNeeded();
+
+  /*
+    Se já registramos esse pedido,
+    não calcula novamente.
+  */
+  if (
+    order.ready_at &&
+    Number.isFinite(
+      Number(order.prep_time_minutes)
+    )
+  ) {
+    dailyStats.prepTimes[order.id] =
+      Number(order.prep_time_minutes);
+
     return;
   }
 
@@ -156,6 +343,7 @@ function registerReady(
       "Pedido sem created_at:",
       order.id
     );
+
     return;
   }
 
@@ -180,14 +368,22 @@ function registerReady(
   ) {
     console.log(
       "Tempo de preparo inválido:",
-      order.id
+      order.id,
+      "created_at:",
+      order.created_at,
+      "ready_at:",
+      readyAt
     );
+
     return;
   }
 
   const minutos =
     (fim - inicio) / 60000;
 
+  /*
+    Ignora valores absurdos.
+  */
   if (
     minutos < 0 ||
     minutos > 180
@@ -199,15 +395,24 @@ function registerReady(
       minutos,
       "min"
     );
+
     return;
   }
 
-  order.ready_at = readyAt;
+  order.ready_at =
+    readyAt;
 
   order.prep_time_minutes =
     Number(
       minutos.toFixed(2)
     );
+
+  dailyStats.prepTimes[order.id] =
+    order.prep_time_minutes;
+
+  console.log(
+    "========================================"
+  );
 
   console.log(
     "TEMPO DE PREPARO REGISTRADO:",
@@ -216,13 +421,112 @@ function registerReady(
     order.prep_time_minutes,
     "min"
   );
+
+  console.log(
+    "TOTAL DE TEMPOS DE PREPARO HOJE:",
+    Object.keys(
+      dailyStats.prepTimes
+    ).length
+  );
+
+  console.log(
+    "========================================"
+  );
 }
+
+/*
+==================================================
+BUSCAR PEDIDO COMPLETO NA API
+==================================================
+
+Quando o webhook de READY chega e o pedido
+ainda não estava na memória, tentamos descobrir
+o created_at original diretamente na API.
+
+Isso evita calcular:
+
+ready - ready = 0 min
+*/
+
+async function findOrderInApi(orderId) {
+  if (!API_KEY) {
+    return null;
+  }
+
+  try {
+    const updatedSince =
+      new Date(
+        Date.now() -
+        8 * 60 * 60 * 1000
+      ).toISOString();
+
+    for (
+      let page = 1;
+      page <= 10;
+      page++
+    ) {
+      const data =
+        await requestOrders(
+          updatedSince,
+          page
+        );
+
+      const pedidos =
+        extractOrders(data);
+
+      if (
+        pedidos.length === 0
+      ) {
+        break;
+      }
+
+      for (
+        const pedido of pedidos
+      ) {
+        const id =
+          pedido.id ||
+          pedido.order_id ||
+          pedido.code;
+
+        if (
+          String(id) ===
+          String(orderId)
+        ) {
+          return pedido;
+        }
+      }
+
+      if (
+        pedidos.length < 100
+      ) {
+        break;
+      }
+    }
+
+  } catch (error) {
+    console.error(
+      "Erro buscando pedido na API:",
+      orderId,
+      error.message
+    );
+  }
+
+  return null;
+}
+
+/*
+==================================================
+ENTREGA
+==================================================
+*/
 
 function registerReleased(
   order,
   eventCreatedAt
 ) {
-  if (!order) return;
+  if (!order) {
+    return;
+  }
 
   if (order.released_at) {
     return;
@@ -247,7 +551,9 @@ function registerDelivered(
   order,
   eventCreatedAt
 ) {
-  if (!order) return;
+  if (!order) {
+    return;
+  }
 
   if (!order.released_at) {
     console.log(
@@ -291,6 +597,7 @@ function registerDelivered(
       "Tempo de entrega inválido:",
       order.id
     );
+
     return;
   }
 
@@ -308,6 +615,7 @@ function registerDelivered(
       minutos,
       "min"
     );
+
     return;
   }
 
@@ -319,6 +627,11 @@ function registerDelivered(
       minutos.toFixed(2)
     );
 
+  resetDailyStatsIfNeeded();
+
+  dailyStats.deliveryTimes[order.id] =
+    order.delivery_time_minutes;
+
   console.log(
     "TEMPO DE ENTREGA REGISTRADO:",
     order.id,
@@ -329,51 +642,34 @@ function registerDelivered(
 }
 
 /*
-  MÉDIA DE PREPARO DO DIA
-
-  IMPORTANTE:
-  Aqui NÃO usamos apenas pedidos ativos.
-
-  Todos os pedidos de hoje que já possuem
-  prep_time_minutes entram na média.
-
-  Portanto, mesmo que a cozinha fique sem
-  pedidos, o valor continua aparecendo.
+==================================================
+MÉDIA DE PREPARO
+==================================================
 */
+
 function getAveragePrepTime() {
-  const tempos = [];
+  resetDailyStatsIfNeeded();
 
-  for (const id in orders) {
-    const order =
-      orders[id];
-
-    if (!order) {
-      continue;
-    }
-
-    if (!order.created_at) {
-      continue;
-    }
-
-    if (!isToday(order.created_at)) {
-      continue;
-    }
-
-    const tempo =
-      Number(
-        order.prep_time_minutes
+  const tempos =
+    Object.values(
+      dailyStats.prepTimes
+    )
+      .map(Number)
+      .filter(
+        (tempo) =>
+          Number.isFinite(tempo) &&
+          tempo >= 0 &&
+          tempo <= 180
       );
 
-    if (
-      Number.isFinite(tempo) &&
-      tempo >= 0 &&
-      tempo <= 180
-    ) {
-      tempos.push(tempo);
-    }
-  }
+  console.log(
+    "MÉDIA PREPARO - quantidade:",
+    tempos.length
+  );
 
-  if (tempos.length === 0) {
+  if (
+    tempos.length === 0
+  ) {
     return 0;
   }
 
@@ -393,45 +689,29 @@ function getAveragePrepTime() {
 }
 
 /*
-  MÉDIA DE ENTREGA DO DIA
-
-  Também continua acumulada mesmo quando
-  não existem pedidos ativos.
+==================================================
+MÉDIA DE ENTREGA
+==================================================
 */
+
 function getAverageDeliveryTime() {
-  const tempos = [];
+  resetDailyStatsIfNeeded();
 
-  for (const id in orders) {
-    const order =
-      orders[id];
-
-    if (!order) {
-      continue;
-    }
-
-    if (!order.created_at) {
-      continue;
-    }
-
-    if (!isToday(order.created_at)) {
-      continue;
-    }
-
-    const tempo =
-      Number(
-        order.delivery_time_minutes
+  const tempos =
+    Object.values(
+      dailyStats.deliveryTimes
+    )
+      .map(Number)
+      .filter(
+        (tempo) =>
+          Number.isFinite(tempo) &&
+          tempo >= 0 &&
+          tempo <= 240
       );
 
-    if (
-      Number.isFinite(tempo) &&
-      tempo >= 0 &&
-      tempo <= 240
-    ) {
-      tempos.push(tempo);
-    }
-  }
-
-  if (tempos.length === 0) {
+  if (
+    tempos.length === 0
+  ) {
     return 0;
   }
 
@@ -449,6 +729,12 @@ function getAverageDeliveryTime() {
     media.toFixed(1)
   );
 }
+
+/*
+==================================================
+CONTADORES
+==================================================
+*/
 
 function getCounters() {
   const counters = {
@@ -470,7 +756,11 @@ function getCounters() {
       continue;
     }
 
-    if (!isToday(order.created_at)) {
+    if (
+      !isToday(
+        order.created_at
+      )
+    ) {
       continue;
     }
 
@@ -513,6 +803,12 @@ function getTotalToday() {
   return total;
 }
 
+/*
+==================================================
+PEDIDOS ATIVOS
+==================================================
+*/
+
 function getActiveOrders() {
   const ativos = [];
 
@@ -524,7 +820,11 @@ function getActiveOrders() {
       continue;
     }
 
-    if (!isToday(order.created_at)) {
+    if (
+      !isToday(
+        order.created_at
+      )
+    ) {
       continue;
     }
 
@@ -561,6 +861,12 @@ function getActiveOrders() {
   return ativos;
 }
 
+/*
+==================================================
+DASHBOARD
+==================================================
+*/
+
 function dashboardData() {
   return {
     total_today:
@@ -580,6 +886,12 @@ function dashboardData() {
   };
 }
 
+/*
+==================================================
+SSE
+==================================================
+*/
+
 function broadcast() {
   const data =
     JSON.stringify(
@@ -598,6 +910,12 @@ function broadcast() {
     }
   );
 }
+
+/*
+==================================================
+EXTRAIR PEDIDOS
+==================================================
+*/
 
 function extractOrders(data) {
   if (!data) {
@@ -643,6 +961,12 @@ function extractOrders(data) {
 
   return [];
 }
+
+/*
+==================================================
+REQUISIÇÃO API CARDÁPIO WEB
+==================================================
+*/
 
 async function requestOrders(
   updatedSince = null,
@@ -702,6 +1026,12 @@ async function requestOrders(
     );
   }
 }
+
+/*
+==================================================
+SINCRONIZAÇÃO
+==================================================
+*/
 
 async function syncOrders() {
   try {
@@ -795,6 +1125,10 @@ async function syncOrders() {
           pedido.created_at ||
           new Date().toISOString();
 
+        /*
+          PREPARO
+        */
+
         if (
           status === "ready" ||
           status ===
@@ -805,6 +1139,10 @@ async function syncOrders() {
             evento
           );
         }
+
+        /*
+          ENTREGA
+        */
 
         if (
           status === "released" ||
@@ -835,10 +1173,6 @@ async function syncOrders() {
       }
     }
 
-    /*
-      SALVA TODOS OS PEDIDOS E OS TEMPOS
-      ANTES DE ATUALIZAR O PAINEL.
-    */
     saveData();
 
     console.log(
@@ -862,15 +1196,24 @@ async function syncOrders() {
     );
 
     console.log(
+      "========================================"
+    );
+
+    console.log(
+      "TEMPOS DE PREPARO ARMAZENADOS HOJE:",
+      Object.keys(
+        dailyStats.prepTimes
+      ).length
+    );
+
+    console.log(
       "TEMPO MÉDIO DE PREPARO:",
       getAveragePrepTime(),
       "min"
     );
 
     console.log(
-      "TEMPO MÉDIO DE ENTREGA:",
-      getAverageDeliveryTime(),
-      "min"
+      "========================================"
     );
 
     broadcast();
@@ -883,9 +1226,15 @@ async function syncOrders() {
   }
 }
 
+/*
+==================================================
+WEBHOOK
+==================================================
+*/
+
 app.post(
   "/webhook/cardapioweb",
-  (req, res) => {
+  async (req, res) => {
     try {
       const event =
         req.body;
@@ -936,32 +1285,147 @@ app.post(
       let order =
         orders[orderId];
 
+      /*
+      ==================================================
+      PEDIDO NOVO NO WEBHOOK
+      ==================================================
+
+      Se ainda não temos o pedido, NÃO vamos simplesmente
+      colocar created_at = horário do webhook se for READY.
+
+      Primeiro tentamos buscar o pedido real na API.
+      */
+
       if (!order) {
-        order =
-          saveOrder({
-            id: orderId,
+        let pedidoApi = null;
 
-            status:
-              status,
+        /*
+          Para READY, buscamos o pedido completo.
+        */
+        if (
+          status === "ready" ||
+          status === "waiting_to_catch"
+        ) {
+          console.log(
+            "Pedido não estava na memória.",
+            "Buscando created_at original na API:",
+            orderId
+          );
 
-            created_at:
-              eventTime
-          });
+          pedidoApi =
+            await findOrderInApi(
+              orderId
+            );
+        }
+
+        if (pedidoApi) {
+          console.log(
+            "Pedido encontrado na API:",
+            orderId,
+            "created_at:",
+            pedidoApi.created_at
+          );
+
+          order =
+            saveOrder(
+              pedidoApi
+            );
+
+          /*
+            Mantém o status do webhook,
+            que é o mais recente.
+          */
+          order.status =
+            status;
+
+        } else {
+          /*
+            Se não conseguimos encontrar na API,
+            criamos o pedido usando o eventTime.
+
+            IMPORTANTE:
+            neste caso o tempo poderá ser 0/ inválido,
+            mas pelo menos não inventamos outro horário.
+          */
+
+          console.log(
+            "Pedido não encontrado na API:",
+            orderId
+          );
+
+          order =
+            saveOrder({
+              id: orderId,
+              status: status,
+              created_at:
+                status === "ready" ||
+                status ===
+                  "waiting_to_catch"
+                  ? null
+                  : eventTime
+            });
+        }
+
       } else {
         order.status =
           status;
       }
+
+      /*
+      ==================================================
+      PREPARO
+      ==================================================
+      */
 
       if (
         status === "ready" ||
         status ===
           "waiting_to_catch"
       ) {
+        /*
+          Se o pedido não tinha created_at,
+          tenta buscar agora.
+        */
+        if (
+          !order.created_at
+        ) {
+          console.log(
+            "Tentando recuperar created_at para:",
+            orderId
+          );
+
+          const pedidoApi =
+            await findOrderInApi(
+              orderId
+            );
+
+          if (
+            pedidoApi &&
+            pedidoApi.created_at
+          ) {
+            order.created_at =
+              pedidoApi.created_at;
+
+            console.log(
+              "created_at recuperado:",
+              orderId,
+              "=>",
+              order.created_at
+            );
+          }
+        }
+
         registerReady(
           order,
           eventTime
         );
       }
+
+      /*
+      ==================================================
+      ENTREGA
+      ==================================================
+      */
 
       if (
         status === "released" ||
@@ -985,12 +1449,11 @@ app.post(
       }
 
       /*
-        SALVA IMEDIATAMENTE.
-
-        Assim, mesmo que depois não tenha
-        nenhum pedido ativo, os tempos
-        continuam armazenados.
+      ==================================================
+      SALVAR IMEDIATAMENTE
+      ==================================================
       */
+
       saveData();
 
       console.log(
@@ -999,14 +1462,15 @@ app.post(
       );
 
       console.log(
-        "TEMPO MÉDIO DE PREPARO:",
-        getAveragePrepTime(),
-        "min"
+        "TEMPOS DE PREPARO ARMAZENADOS:",
+        Object.keys(
+          dailyStats.prepTimes
+        ).length
       );
 
       console.log(
-        "TEMPO MÉDIO DE ENTREGA:",
-        getAverageDeliveryTime(),
+        "TEMPO MÉDIO DE PREPARO:",
+        getAveragePrepTime(),
         "min"
       );
 
@@ -1032,6 +1496,12 @@ app.post(
     }
   }
 );
+
+/*
+==================================================
+EVENTOS SSE
+==================================================
+*/
 
 app.get(
   "/events",
@@ -1074,6 +1544,12 @@ app.get(
   }
 );
 
+/*
+==================================================
+DASHBOARD
+==================================================
+*/
+
 app.get(
   "/api/dashboard",
   (req, res) => {
@@ -1082,6 +1558,12 @@ app.get(
     );
   }
 );
+
+/*
+==================================================
+HEALTH
+==================================================
+*/
 
 app.get(
   "/health",
@@ -1098,6 +1580,11 @@ app.get(
       avg_delivery_time:
         getAverageDeliveryTime(),
 
+      prep_times_today:
+        Object.keys(
+          dailyStats.prepTimes
+        ).length,
+
       orders:
         Object.keys(
           orders
@@ -1111,6 +1598,12 @@ app.get(
     });
   }
 );
+
+/*
+==================================================
+INICIAR
+==================================================
+*/
 
 loadData();
 
@@ -1129,19 +1622,32 @@ app.listen(
     );
 
     console.log(
+      "Tempos de preparo carregados:",
+      Object.keys(
+        dailyStats.prepTimes
+      ).length
+    );
+
+    console.log(
+      "TEMPO MÉDIO DE PREPARO INICIAL:",
+      getAveragePrepTime(),
+      "min"
+    );
+
+    console.log(
       "Consultando total de pedidos..."
     );
 
-    /*
-      PRIMEIRA SINCRONIZAÇÃO
-    */
     syncOrders();
   }
 );
 
 /*
-  SINCRONIZA A CADA 30 SEGUNDOS
+==================================================
+SINCRONIZA A CADA 30 SEGUNDOS
+==================================================
 */
+
 setInterval(
   syncOrders,
   30000
