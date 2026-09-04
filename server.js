@@ -32,12 +32,6 @@ function getTodayString() {
   return `${year}-${month}-${day}`;
 }
 
-/*
-  Histórico separado dos pedidos.
-
-  Assim, mesmo quando o pedido for fechado,
-  o tempo de preparo continua guardado.
-*/
 let dailyStats = {
   date: getTodayString(),
   prepTimes: {},
@@ -48,10 +42,7 @@ function resetDailyStatsIfNeeded() {
   const hoje = getTodayString();
 
   if (!dailyStats || dailyStats.date !== hoje) {
-    console.log(
-      "Novo dia detectado. Iniciando histórico:",
-      hoje
-    );
+    console.log("Novo dia detectado. Iniciando histórico:", hoje);
 
     dailyStats = {
       date: hoje,
@@ -91,12 +82,6 @@ function loadData() {
 
     resetDailyStatsIfNeeded();
 
-    /*
-      Reconstrói o histórico a partir dos pedidos
-      que já possuem prep_time_minutes.
-
-      Isso ajuda a recuperar dados antigos.
-    */
     rebuildDailyStatsFromOrders();
 
     console.log(
@@ -132,6 +117,7 @@ function saveData() {
         2
       )
     );
+
   } catch (error) {
     console.error(
       "Erro ao salvar data.json:",
@@ -202,9 +188,6 @@ function saveOrder(pedido) {
 
     id: id,
 
-    /*
-      Nunca substitui um created_at que já temos.
-    */
     created_at:
       existente.created_at ||
       pedido.created_at ||
@@ -291,9 +274,7 @@ function rebuildDailyStatsFromOrders() {
     }
   }
 
-  console.log(
-    "Histórico reconstruído."
-  );
+  console.log("Histórico reconstruído.");
 
   console.log(
     "Tempos de preparo:",
@@ -322,10 +303,6 @@ function registerReady(
 
   resetDailyStatsIfNeeded();
 
-  /*
-    Se já registramos esse pedido,
-    não calcula novamente.
-  */
   if (
     order.ready_at &&
     Number.isFinite(
@@ -381,9 +358,6 @@ function registerReady(
   const minutos =
     (fim - inicio) / 60000;
 
-  /*
-    Ignora valores absurdos.
-  */
   if (
     minutos < 0 ||
     minutos > 180
@@ -438,14 +412,6 @@ function registerReady(
 ==================================================
 BUSCAR PEDIDO COMPLETO NA API
 ==================================================
-
-Quando o webhook de READY chega e o pedido
-ainda não estava na memória, tentamos descobrir
-o created_at original diretamente na API.
-
-Isso evita calcular:
-
-ready - ready = 0 min
 */
 
 async function findOrderInApi(orderId) {
@@ -680,11 +646,8 @@ function getAveragePrepTime() {
       0
     );
 
-  const media =
-    soma / tempos.length;
-
   return Number(
-    media.toFixed(1)
+    (soma / tempos.length).toFixed(1)
   );
 }
 
@@ -722,11 +685,8 @@ function getAverageDeliveryTime() {
       0
     );
 
-  const media =
-    soma / tempos.length;
-
   return Number(
-    media.toFixed(1)
+    (soma / tempos.length).toFixed(1)
   );
 }
 
@@ -734,18 +694,20 @@ function getAverageDeliveryTime() {
 ==================================================
 CONTADORES
 ==================================================
+
+ATENÇÃO:
+Esses nomes precisam ser exatamente iguais
+aos nomes usados pelo HTML.
+==================================================
 */
 
 function getCounters() {
   const counters = {
-    waiting_confirmation: 0,
-    pending_payment: 0,
-    pending_online_payment: 0,
-    confirmed: 0,
-    scheduled_confirmed: 0,
-    ready: 0,
-    waiting_to_catch: 0,
-    released: 0
+    aguardando: 0,
+    em_preparo: 0,
+    prontos: 0,
+    em_entrega: 0,
+    entregues: 0
   };
 
   for (const id in orders) {
@@ -767,18 +729,87 @@ function getCounters() {
     const status =
       order.status;
 
+    /*
+    ================================================
+    AGUARDANDO
+    ================================================
+    */
+
     if (
-      Object.prototype.hasOwnProperty.call(
-        counters,
-        status
-      )
+      status === "waiting_confirmation" ||
+      status === "pending_payment" ||
+      status === "pending_online_payment" ||
+      status === "waiting_payment"
     ) {
-      counters[status]++;
+      counters.aguardando++;
+      continue;
+    }
+
+    /*
+    ================================================
+    EM PREPARO
+    ================================================
+    */
+
+    if (
+      status === "confirmed" ||
+      status === "scheduled_confirmed"
+    ) {
+      counters.em_preparo++;
+      continue;
+    }
+
+    /*
+    ================================================
+    PRONTOS
+    ================================================
+    */
+
+    if (
+      status === "ready" ||
+      status === "waiting_to_catch"
+    ) {
+      counters.prontos++;
+      continue;
+    }
+
+    /*
+    ================================================
+    EM ENTREGA
+    ================================================
+    */
+
+    if (
+      status === "released" ||
+      status === "out_for_delivery"
+    ) {
+      counters.em_entrega++;
+      continue;
+    }
+
+    /*
+    ================================================
+    ENTREGUES
+    ================================================
+    */
+
+    if (
+      status === "delivered" ||
+      status === "closed"
+    ) {
+      counters.entregues++;
+      continue;
     }
   }
 
   return counters;
 }
+
+/*
+==================================================
+TOTAL DE PEDIDOS HOJE
+==================================================
+*/
 
 function getTotalToday() {
   let total = 0;
@@ -1062,6 +1093,7 @@ async function syncOrders() {
             updatedSince,
             page
           );
+
       } catch (error) {
         console.error(
           "Erro na página",
@@ -1126,7 +1158,9 @@ async function syncOrders() {
           new Date().toISOString();
 
         /*
-          PREPARO
+        ============================================
+        PREPARO
+        ============================================
         */
 
         if (
@@ -1141,7 +1175,9 @@ async function syncOrders() {
         }
 
         /*
-          ENTREGA
+        ============================================
+        ENTREGA
+        ============================================
         */
 
         if (
@@ -1193,6 +1229,13 @@ async function syncOrders() {
     console.log(
       "TOTAL DE PEDIDOS HOJE:",
       getTotalToday()
+    );
+
+    console.log(
+      "CONTADORES:",
+      JSON.stringify(
+        getCounters()
+      )
     );
 
     console.log(
@@ -1286,22 +1329,14 @@ app.post(
         orders[orderId];
 
       /*
-      ==================================================
+      ================================================
       PEDIDO NOVO NO WEBHOOK
-      ==================================================
-
-      Se ainda não temos o pedido, NÃO vamos simplesmente
-      colocar created_at = horário do webhook se for READY.
-
-      Primeiro tentamos buscar o pedido real na API.
+      ================================================
       */
 
       if (!order) {
         let pedidoApi = null;
 
-        /*
-          Para READY, buscamos o pedido completo.
-        */
         if (
           status === "ready" ||
           status === "waiting_to_catch"
@@ -1331,23 +1366,10 @@ app.post(
               pedidoApi
             );
 
-          /*
-            Mantém o status do webhook,
-            que é o mais recente.
-          */
           order.status =
             status;
 
         } else {
-          /*
-            Se não conseguimos encontrar na API,
-            criamos o pedido usando o eventTime.
-
-            IMPORTANTE:
-            neste caso o tempo poderá ser 0/ inválido,
-            mas pelo menos não inventamos outro horário.
-          */
-
           console.log(
             "Pedido não encontrado na API:",
             orderId
@@ -1372,9 +1394,9 @@ app.post(
       }
 
       /*
-      ==================================================
+      ================================================
       PREPARO
-      ==================================================
+      ================================================
       */
 
       if (
@@ -1382,10 +1404,6 @@ app.post(
         status ===
           "waiting_to_catch"
       ) {
-        /*
-          Se o pedido não tinha created_at,
-          tenta buscar agora.
-        */
         if (
           !order.created_at
         ) {
@@ -1422,9 +1440,9 @@ app.post(
       }
 
       /*
-      ==================================================
+      ================================================
       ENTREGA
-      ==================================================
+      ================================================
       */
 
       if (
@@ -1449,9 +1467,9 @@ app.post(
       }
 
       /*
-      ==================================================
-      SALVAR IMEDIATAMENTE
-      ==================================================
+      ================================================
+      SALVAR
+      ================================================
       */
 
       saveData();
@@ -1459,6 +1477,13 @@ app.post(
       console.log(
         "TOTAL DE PEDIDOS HOJE:",
         getTotalToday()
+      );
+
+      console.log(
+        "CONTADORES:",
+        JSON.stringify(
+          getCounters()
+        )
       );
 
       console.log(
@@ -1574,6 +1599,9 @@ app.get(
       total_today:
         getTotalToday(),
 
+      counters:
+        getCounters(),
+
       avg_prep_time:
         getAveragePrepTime(),
 
@@ -1632,6 +1660,13 @@ app.listen(
       "TEMPO MÉDIO DE PREPARO INICIAL:",
       getAveragePrepTime(),
       "min"
+    );
+
+    console.log(
+      "CONTADORES INICIAIS:",
+      JSON.stringify(
+        getCounters()
+      )
     );
 
     console.log(
