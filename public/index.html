@@ -32,46 +32,64 @@ body{
 
 body{
   font-family:Arial,Helvetica,sans-serif;
+
   background:
     radial-gradient(
       circle at 50% -20%,
       #0754a8 0%,
-      #073d82 30%,
-      #052d61 62%,
+      #073d82 32%,
+      #052d61 65%,
       #031d42 100%
     );
 
   color:#fff;
+
   overflow-x:hidden;
 }
 
 
 /* =========================================================
-   TEXTURA DO PAINEL
+   FUNDO
 ========================================================= */
 
 body::before{
   content:"";
+
   position:fixed;
+
   inset:0;
+
   pointer-events:none;
 
   background:
+    radial-gradient(
+      circle at 15% 20%,
+      rgba(0,220,255,.07),
+      transparent 30%
+    ),
+    radial-gradient(
+      circle at 85% 15%,
+      rgba(0,120,255,.08),
+      transparent 30%
+    ),
     linear-gradient(
       115deg,
       transparent 0%,
-      rgba(255,255,255,.035) 45%,
+      rgba(255,255,255,.025) 45%,
       transparent 46%
     );
 
-  opacity:.6;
-  z-index:-1;
+  z-index:-2;
 }
+
 
 body::after{
   content:"";
+
   position:fixed;
+
   inset:0;
+
   pointer-events:none;
 
   background:
@@ -87,7 +105,7 @@ body::after{
 
   background-size:40px 40px;
 
-  opacity:.22;
+  opacity:.18;
 
   z-index:-1;
 }
@@ -99,6 +117,7 @@ body::after{
 
 header{
   padding:16px 42px 8px;
+
   text-align:center;
 }
 
@@ -210,8 +229,8 @@ h1{
   background:
     linear-gradient(
       145deg,
-      rgba(11,78,151,.95),
-      rgba(4,49,103,.95)
+      rgba(11,78,151,.98),
+      rgba(4,49,103,.98)
     );
 
   border:1px solid rgba(125,204,255,.28);
@@ -227,27 +246,6 @@ h1{
   box-shadow:
     0 8px 22px rgba(0,0,0,.25),
     inset 0 1px 0 rgba(255,255,255,.08);
-}
-
-.summary-card::after{
-  content:"";
-
-  position:absolute;
-
-  width:180px;
-  height:180px;
-
-  right:-100px;
-  top:-100px;
-
-  background:
-    radial-gradient(
-      circle,
-      rgba(255,255,255,.12),
-      transparent 70%
-    );
-
-  pointer-events:none;
 }
 
 .summary-card:first-child{
@@ -352,6 +350,10 @@ h1{
 
   text-shadow:
     0 0 15px rgba(100,255,0,.35);
+
+  transition:
+    color .4s ease,
+    text-shadow .4s ease;
 }
 
 .prep-time.ok{
@@ -401,7 +403,7 @@ h1{
 
 
 /* =========================================================
-   META / VELOCÍMETRO
+   META
 ========================================================= */
 
 .goal-section{
@@ -429,6 +431,10 @@ h1{
     inset 0 1px 0 rgba(255,255,255,.08);
 
   overflow:hidden;
+
+  transition:
+    border-color .4s ease,
+    box-shadow .4s ease;
 }
 
 .goal-header{
@@ -438,7 +444,7 @@ h1{
 
   align-items:flex-start;
 
-  margin-bottom:4px;
+  margin-bottom:0;
 }
 
 .goal-title{
@@ -478,6 +484,10 @@ h1{
 
   text-shadow:
     0 0 12px rgba(90,255,50,.35);
+
+  transition:
+    color .4s ease,
+    text-shadow .4s ease;
 }
 
 
@@ -485,10 +495,10 @@ h1{
    VELOCÍMETRO
 ========================================================= */
 
-.gauge-area{
+.gauge-wrap{
   width:100%;
 
-  height:145px;
+  height:155px;
 
   display:flex;
 
@@ -498,73 +508,90 @@ h1{
 
   position:relative;
 
-  margin-top:2px;
+  margin-top:4px;
+
+  overflow:hidden;
 }
 
 .gauge{
-  width:270px;
-  height:270px;
-
-  border-radius:50%;
 
   position:relative;
 
+  width:300px;
+  height:150px;
+
+  border-radius:
+    300px 300px 0 0;
+
   background:
     conic-gradient(
-      from -90deg,
-      #ed1c24 0deg 36deg,
-      #ff5a1f 36deg 72deg,
-      #ffb400 72deg 108deg,
-      #ffd400 108deg 144deg,
-      #43c52b 144deg 180deg,
-      transparent 180deg 360deg
+      from 270deg at 50% 100%,
+
+      #ed1c24 0deg 35deg,
+      #ff7518 35deg 70deg,
+      #ffc400 70deg 105deg,
+      #ffe600 105deg 140deg,
+      #76d936 140deg 180deg
     );
 
-  transform:scale(.95);
+  box-shadow:
+    0 -4px 20px rgba(0,0,0,.25);
+
+  overflow:hidden;
 }
+
+
+/* FUNDO INTERNO */
 
 .gauge::before{
+
   content:"";
 
   position:absolute;
 
-  inset:20px;
+  left:18px;
+  top:18px;
 
-  border-radius:50%;
+  width:264px;
+  height:132px;
+
+  border-radius:
+    264px 264px 0 0;
 
   background:
-    radial-gradient(
-      circle at 50% 55%,
-      #07529a 0%,
-      #06417d 50%,
-      #043567 100%
+    linear-gradient(
+      180deg,
+      #07529a,
+      #04396e
     );
 
   box-shadow:
-    inset 0 0 25px rgba(0,0,0,.35);
+    inset 0 5px 15px rgba(0,0,0,.3);
+
+  z-index:1;
 }
 
-.gauge::after{
-  content:"";
 
+/* =========================================================
+   MARCAÇÕES
+========================================================= */
+
+.gauge-tick{
   position:absolute;
 
-  left:50%;
-  bottom:18px;
+  width:3px;
+  height:10px;
 
-  width:15px;
-  height:15px;
+  background:#dff1ff;
 
-  transform:translateX(-50%);
+  border-radius:3px;
 
-  border-radius:50%;
+  transform-origin:
+    50% 100%;
 
-  background:#fff;
+  z-index:4;
 
-  border:3px solid #d7eaff;
-
-  box-shadow:
-    0 0 10px rgba(255,255,255,.7);
+  opacity:.85;
 }
 
 
@@ -573,13 +600,14 @@ h1{
 ========================================================= */
 
 .gauge-needle{
+
   position:absolute;
 
   left:50%;
-  bottom:25px;
+  bottom:7px;
 
-  width:4px;
-  height:105px;
+  width:5px;
+  height:116px;
 
   transform:
     translateX(-50%)
@@ -591,30 +619,45 @@ h1{
   background:
     linear-gradient(
       to top,
-      #fff,
-      #dceeff
+      #ffffff,
+      #dcecff
     );
 
-  border-radius:4px;
+  border-radius:10px;
+
+  z-index:10;
 
   box-shadow:
-    0 0 7px rgba(255,255,255,.75),
-    0 0 15px rgba(255,255,255,.35);
+    0 0 5px rgba(255,255,255,.95),
+    0 0 12px rgba(255,255,255,.5);
 
-  z-index:5;
+  /*
+    ESTA É A ANIMAÇÃO DO PONTEIRO.
+
+    Quando chegar um pedido novo,
+    o JavaScript muda o rotate()
+    e ele vai até a nova posição
+    suavemente.
+  */
 
   transition:
-    transform .9s cubic-bezier(.22,1,.36,1);
+    transform .85s cubic-bezier(.22,1,.36,1);
 }
 
-.gauge-center{
+
+/* =========================================================
+   PINO CENTRAL
+========================================================= */
+
+.gauge-pin{
+
   position:absolute;
 
   left:50%;
-  bottom:18px;
+  bottom:0;
 
-  width:24px;
-  height:24px;
+  width:25px;
+  height:25px;
 
   transform:translateX(-50%);
 
@@ -623,55 +666,70 @@ h1{
   background:
     radial-gradient(
       circle at 35% 30%,
-      #fff,
-      #bfc8d0 55%,
-      #68737c 100%
+      #ffffff,
+      #d8e2eb 45%,
+      #687582 100%
     );
 
-  border:2px solid #fff;
+  border:2px solid #ffffff;
 
-  z-index:8;
+  z-index:20;
 
   box-shadow:
-    0 2px 8px rgba(0,0,0,.5);
-}
-
-.gauge-labels{
-  position:absolute;
-
-  left:0;
-  right:0;
-
-  bottom:0;
-
-  display:flex;
-
-  justify-content:space-between;
-
-  padding:0 7px;
-
-  font-size:9px;
-
-  font-weight:900;
-
-  text-transform:uppercase;
-}
-
-.gauge-labels span:nth-child(1){
-  color:#ff3434;
-}
-
-.gauge-labels span:nth-child(2){
-  color:#ffbd24;
-}
-
-.gauge-labels span:nth-child(3){
-  color:#66ff45;
+    0 2px 8px rgba(0,0,0,.5),
+    0 0 8px rgba(255,255,255,.4);
 }
 
 
 /* =========================================================
-   MENSAGEM META
+   NÚMEROS DO VELOCÍMETRO
+========================================================= */
+
+.gauge-number{
+
+  position:absolute;
+
+  z-index:8;
+
+  font-size:10px;
+
+  font-weight:900;
+
+  color:#d9edff;
+
+  text-shadow:
+    0 1px 3px rgba(0,0,0,.7);
+}
+
+.gauge-0{
+
+  left:27px;
+  bottom:15px;
+
+  color:#ff4b4b;
+}
+
+.gauge-125{
+
+  left:50%;
+  bottom:106px;
+
+  transform:translateX(-50%);
+
+  color:#ffe34a;
+}
+
+.gauge-250{
+
+  right:27px;
+  bottom:15px;
+
+  color:#72ff52;
+}
+
+
+/* =========================================================
+   MENSAGEM DA META
 ========================================================= */
 
 .goal-message{
@@ -688,6 +746,9 @@ h1{
   color:#a6cae8;
 
   font-weight:900;
+
+  transition:
+    color .4s ease;
 }
 
 .goal-card.completed{
@@ -704,6 +765,9 @@ h1{
 
 .goal-card.completed .goal-percent{
   color:#70ff42;
+
+  text-shadow:
+    0 0 14px rgba(90,255,50,.55);
 }
 
 
@@ -800,7 +864,7 @@ h1{
 
 
 /* =========================================================
-   CORES KANBAN
+   CORES
 ========================================================= */
 
 .waiting .dot{
@@ -833,10 +897,11 @@ h1{
 
 
 /* =========================================================
-   CONTADORES
+   CONTADORES GRANDES
 ========================================================= */
 
 .counter-button{
+
   width:100%;
 
   height:215px;
@@ -861,6 +926,7 @@ h1{
 }
 
 .counter-number{
+
   position:relative;
 
   z-index:2;
@@ -878,6 +944,7 @@ h1{
 }
 
 .counter-label{
+
   position:relative;
 
   z-index:2;
@@ -901,6 +968,7 @@ h1{
 ========================================================= */
 
 .waiting .counter-button{
+
   background:
     linear-gradient(
       145deg,
@@ -917,6 +985,7 @@ h1{
 ========================================================= */
 
 .preparing .counter-button{
+
   background:
     linear-gradient(
       145deg,
@@ -936,6 +1005,7 @@ h1{
 ========================================================= */
 
 .ready .counter-button{
+
   background:
     linear-gradient(
       145deg,
@@ -955,6 +1025,7 @@ h1{
 ========================================================= */
 
 .delivery .counter-button{
+
   background:
     linear-gradient(
       145deg,
@@ -978,6 +1049,7 @@ section{
 }
 
 .panel{
+
   background:
     rgba(3,38,80,.95);
 
@@ -992,6 +1064,7 @@ section{
 }
 
 .panel-title{
+
   display:flex;
 
   justify-content:space-between;
@@ -1002,6 +1075,7 @@ section{
 }
 
 h2{
+
   margin:0;
 
   font-size:17px;
@@ -1012,6 +1086,7 @@ h2{
 }
 
 .panel-info{
+
   font-size:9px;
 
   color:#8ebce0;
@@ -1022,12 +1097,14 @@ h2{
 }
 
 table{
+
   width:100%;
 
   border-collapse:collapse;
 }
 
 th{
+
   font-size:9px;
 
   text-transform:uppercase;
@@ -1039,18 +1116,22 @@ th{
 
 th,
 td{
+
   text-align:left;
 
   padding:8px;
 
-  border-bottom:1px solid rgba(130,190,230,.1);
+  border-bottom:
+    1px solid rgba(130,190,230,.1);
 }
 
 td{
+
   font-size:12px;
 }
 
 .pill{
+
   display:inline-block;
 
   padding:4px 9px;
@@ -1098,6 +1179,7 @@ td{
   }
 
   .summary{
+
     grid-template-columns:1fr;
 
     padding:12px 18px 16px;
@@ -1120,6 +1202,7 @@ td{
   }
 
   .kanban{
+
     grid-template-columns:1fr;
 
     padding:0 18px 20px;
@@ -1142,7 +1225,7 @@ td{
   }
 
   .gauge{
-    transform:scale(.8);
+    transform:scale(.82);
   }
 
 }
@@ -1167,8 +1250,11 @@ td{
   }
 
   .summary{
+
     padding-left:55px;
+
     padding-right:55px;
+
     gap:18px;
   }
 
@@ -1189,7 +1275,9 @@ td{
   }
 
   .goal-section{
+
     padding-left:55px;
+
     padding-right:55px;
   }
 
@@ -1202,7 +1290,9 @@ td{
   }
 
   .kanban{
+
     padding-left:55px;
+
     padding-right:55px;
 
     gap:18px;
@@ -1229,10 +1319,42 @@ td{
   }
 
   section{
+
     padding-left:55px;
+
     padding-right:55px;
   }
 
+}
+
+
+/* =========================================================
+   ANIMAÇÃO EXTRA DO PONTEIRO
+========================================================= */
+
+@keyframes needlePulse{
+
+  0%{
+    filter:
+      brightness(1);
+  }
+
+  50%{
+    filter:
+      brightness(1.35);
+  }
+
+  100%{
+    filter:
+      brightness(1);
+  }
+
+}
+
+.gauge-needle.moving{
+
+  animation:
+    needlePulse .35s ease;
 }
 
 
@@ -1398,7 +1520,11 @@ td{
     </div>
 
 
-    <div class="gauge-area">
+    <!-- =====================================================
+         VELOCÍMETRO
+    ====================================================== -->
+
+    <div class="gauge-wrap">
 
       <div class="gauge">
 
@@ -1407,16 +1533,18 @@ td{
           id="goal_needle"
         ></div>
 
-        <div class="gauge-center"></div>
+        <div class="gauge-pin"></div>
 
-        <div class="gauge-labels">
+        <div class="gauge-number gauge-0">
+          0
+        </div>
 
-          <span>BAIXO</span>
+        <div class="gauge-number gauge-125">
+          125
+        </div>
 
-          <span>META</span>
-
-          <span>EXCELENTE</span>
-
+        <div class="gauge-number gauge-250">
+          250
         </div>
 
       </div>
@@ -1811,7 +1939,7 @@ function updatePrepTime(minutes){
 
 /*
 ==================================================
-META DE PEDIDOS + VELOCÍMETRO
+META + VELOCÍMETRO
 ==================================================
 */
 
@@ -1822,14 +1950,22 @@ function updateGoal(total){
   const current =
     Number(total) || 0;
 
-  const percentage =
-    Math.min(
-      (current / meta) * 100,
-      100
-    );
+
+  /*
+  ================================================
+  PORCENTAGEM
+  ================================================
+  */
 
   const realPercentage =
     (current / meta) * 100;
+
+
+  const percentage =
+    Math.min(
+      realPercentage,
+      100
+    );
 
 
   document.getElementById(
@@ -1845,13 +1981,22 @@ function updateGoal(total){
 
 
   /*
-    PONTEIRO
+  ================================================
+  PONTEIRO
+  ================================================
 
-    -90° = começo / 0 pedidos
-     90° = meta / 250 pedidos
+  0 pedidos
+      ↓
+     -90°
 
-    Se passar da meta, fica travado
-    na posição máxima.
+  125 pedidos
+      ↓
+      0°
+
+  250 pedidos
+      ↓
+      90°
+  ================================================
   */
 
   const needle =
@@ -1859,26 +2004,87 @@ function updateGoal(total){
       "goal_needle"
     );
 
+
   if(needle){
 
-    const needleAngle =
-      -90 + (
-        Math.min(
-          current / meta,
-          1
-        ) * 180
+    /*
+      Limita o ponteiro a 250.
+
+      Se chegar 251, 270, 300...
+      ele continua no máximo.
+    */
+
+    const ratio =
+      Math.min(
+        current / meta,
+        1
       );
 
+
+    /*
+      Cada pedido altera um pouco
+      o ângulo do ponteiro.
+
+      250 pedidos = 180 graus
+      Portanto:
+
+      1 pedido = 0.72 grau
+    */
+
+    const angle =
+      -90 + (
+        ratio * 180
+      );
+
+
+    /*
+      A transição CSS faz o ponteiro
+      andar suavemente até a nova posição.
+    */
+
     needle.style.transform =
-      `translateX(-50%) rotate(${needleAngle}deg)`;
+      `
+        translateX(-50%)
+        rotate(${angle}deg)
+      `;
+
+
+    /*
+      Pequeno brilho toda vez que
+      a posição é atualizada.
+    */
+
+    needle.classList.remove(
+      "moving"
+    );
+
+
+    /*
+      Força o navegador a reiniciar
+      a animação.
+    */
+
+    void needle.offsetWidth;
+
+
+    needle.classList.add(
+      "moving"
+    );
 
   }
 
+
+  /*
+  ================================================
+  ESTADO DA META
+  ================================================
+  */
 
   const card =
     document.getElementById(
       "goal_card"
     );
+
 
   const message =
     document.getElementById(
@@ -1892,16 +2098,21 @@ function updateGoal(total){
       "completed"
     );
 
+
     message.textContent =
       current === meta
+
         ? "🏆 META BATIDA!"
+
         : `🔥 META SUPERADA — ${current - meta} pedidos acima`;
+
 
   }else{
 
     card.classList.remove(
       "completed"
     );
+
 
     message.textContent =
       `Faltam ${meta - current} pedidos para a meta`;
@@ -2026,6 +2237,7 @@ function render(data){
       data.total_today
     ) || 0;
 
+
   document.getElementById(
     "total_today"
   ).textContent =
@@ -2134,6 +2346,7 @@ function updateClock(){
   const now =
     new Date();
 
+
   const time =
     now.toLocaleTimeString(
       "pt-BR",
@@ -2143,13 +2356,17 @@ function updateClock(){
       }
     );
 
+
   document.getElementById(
     "clock"
   ).textContent =
     time;
+
 }
 
+
 updateClock();
+
 
 setInterval(
   updateClock,
@@ -2172,8 +2389,10 @@ async function boot(){
         "/api/dashboard"
       );
 
+
     const data =
       await response.json();
+
 
     render(data);
 
@@ -2188,6 +2407,12 @@ async function boot(){
 
   }
 
+
+  /*
+  ================================================
+  EVENTOS EM TEMPO REAL
+  ================================================
+  */
 
   const es =
     new EventSource(
